@@ -3,14 +3,31 @@
 
 .block-services-grid {
     width: 100%;
+    padding: 4rem 0 6rem;
+
+    @include maxWidth($md) {
+        padding: 3rem 0 4rem;
+    }
+
+    @include maxWidth($sm) {
+        padding: 2rem 0 3rem;
+    }
+
+    &__section-title {
+        color: #fff;
+        font-weight: 300;
+        line-height: 1.2;
+        margin: 0 0 4rem;
+        padding: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+
+        @include resFont(2.4, 3.6);
+    }
 
     &__group {
         display: block; // Change to block to let content flow naturally
         margin-bottom: 6rem;
-
-        @include maxWidth($md) {
-            margin-bottom: 4rem;
-        }
     }
 
     &__group-title {
@@ -21,15 +38,8 @@
         margin: 0 0 2rem 0;
         padding: 0;
         line-height: 1.2;
-        font-size: rem(36);
 
-        @include maxWidth($xl) {
-            font-size: rem(24);
-        }
-
-        @include maxWidth($md) {
-            font-size: rem(18);
-        }
+        @include resFont(2, 2.8);
 
         &.text-end {
             text-align: end !important;
@@ -126,6 +136,7 @@
         padding: 3rem 1rem 0;
         background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
         line-height: 1.2;
+        @include resFont(1.8, 2.4);
     }
 
     @media (max-width: 768px) {

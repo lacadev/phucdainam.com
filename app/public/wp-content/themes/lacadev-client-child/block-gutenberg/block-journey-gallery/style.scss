@@ -280,21 +280,26 @@
 
     .block-journey-gallery__heading {
         color: $secondColor;
+        @include resFont(1.2, 2.4);
     }
 
     .block-journey-gallery__subheading {
         color: rgba(255, 255, 255, .7);
+        @include resFont(.9, 1.1);
     }
 
     .block-journey-gallery__title {
         color: $secondColor;
+        @include resFont(1, 1.5);
     }
 
     .block-journey-gallery__desc {
         color: rgba(255, 255, 255, .65);
+        @include resFont(.8, 1);
     }
 
     .block-journey-gallery__number {
         color: $secondColor;
+        @include resFont(12, 18);
     }
 }

@@ -39,6 +39,8 @@
         color: $secondColor;
         font-weight: $regular;
         text-transform: uppercase;
+
+        @include resFont(1.2, 2.4);
     }
 
     // ── Vanilla carousel viewport + track ───────────────────────────────────
@@ -226,14 +228,12 @@
         &--next { right: 1.2rem; }
 
         @include maxWidth($sm) {
-            width: 3.2rem;
-            height: 3.2rem;
-
+            width: 6.2rem;
+            height: 6.2rem;
             svg {
-                width: 2rem;
-                height: 2rem;
+                width: 2.8rem;
+                height: 2.8rem;
             }
-
             &--prev { left: 0.8rem; }
             &--next { right: 0.8rem; }
         }

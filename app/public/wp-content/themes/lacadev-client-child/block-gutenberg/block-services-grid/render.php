@@ -63,10 +63,10 @@ $wrapper_attrs = get_block_wrapper_attributes( [
         <div class="block-services-grid__group block-services-grid__group--<?php echo $layout; ?>">
             <?php if ( $layout === 'top-title-3cols' ) : ?>
                 <?php if ( $title ) : ?>
-                    <p class="block-services-grid__group-title text-end" data-aos="fade-up"><?php echo $title; ?></p>
+                    <p class="block-services-grid__group-title text-end"><?php echo $title; ?></p>
                 <?php endif; ?>
 
-                <div class="block-services-grid__cols" data-aos="fade-up">
+                <div class="block-services-grid__cols">
                     <?php foreach ( $group['items'] ?? [] as $item ) : ?>
                         <div class="block-services-grid__col-item">
                             <?php lcdc_services_render_img( $item['imageUrl'] ?? '', $item['label'] ?? '', $item['link'] ?? '' ); ?>
@@ -86,7 +86,7 @@ $wrapper_attrs = get_block_wrapper_attributes( [
 
                     if ( $layout === 'right-main-left-grid' ) :
                     ?>
-                        <div class="block-services-grid__side-content" data-aos="fade-right">
+                        <div class="block-services-grid__side-content">
                             <?php if ( $title ) : ?>
                                 <p class="block-services-grid__group-title"><?php echo $title; ?></p>
                             <?php endif; ?>
@@ -98,16 +98,16 @@ $wrapper_attrs = get_block_wrapper_attributes( [
                                 <?php endforeach; ?>
                             </div>
                         </div>
-                        <div class="block-services-grid__main-img" data-aos="fade-left">
+                        <div class="block-services-grid__main-img">
                             <?php lcdc_services_render_img( $main_url, $title, $link ); ?>
                         </div>
 
                     <?php else : ?>
                         <?php // left-main-right-grid ?>
-                        <div class="block-services-grid__main-img" data-aos="fade-right">
+                        <div class="block-services-grid__main-img">
                             <?php lcdc_services_render_img( $main_url, $title, $link ); ?>
                         </div>
-                        <div class="block-services-grid__side-content" data-aos="fade-left">
+                        <div class="block-services-grid__side-content">
                             <?php if ( $title ) : ?>
                                 <p class="block-services-grid__group-title"><?php echo $title; ?></p>
                             <?php endif; ?>

@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 // ── Sanitize attributes ────────────────────────────────────────────────────
 $attr          = $attributes;
 $heading = esc_html( $attr['sectionTitle']);
-$cta_text      = esc_html( ! empty( $attr['ctaText'] ) ? $attr['ctaText'] : 'Xem Thêm' );
+$cta_text      = esc_html( $attr['ctaText']      ?? 'Xem Thêm' );
 $heading_color = sanitize_hex_color( $attr['headingColor'] ?? '' );
 
 $post_type      = sanitize_key( $attr['postType']      ?? 'post' );
@@ -75,12 +75,13 @@ if ( $mode === 'manual' && ! empty( $selected_posts ) ) {
 $query = new WP_Query( $query_args );
 
 // ── Unique ID per instance ─────────────────────────────────────────────────
-$uid      = wp_unique_id( 'pslider-' );
-$swiper_id = 'projects-slider-' . $uid;
+static $instance = 0;
+$instance++;
+$swiper_id = 'projects-slider-' . $instance;
 
 $section_extra_attrs = 'class="block-projects-slider" style="background:' . esc_attr( $bg_rgba ) . ';"';
 if ( $show_popup ) {
-    $popup_id = 'pslider-popup-' . $uid;
+    $popup_id = 'pslider-popup-' . $instance;
     $section_extra_attrs .= ' data-popup-id="' . esc_attr( $popup_id ) . '"';
 }
 ?>
@@ -426,7 +427,7 @@ $js = sprintf( '
         init_%1$s();
     }
 })();',
-    preg_replace('/[^a-zA-Z0-9_]/', '_', $uid),
+    $instance,
     $swiper_id,
     $pause_hover ? 'true' : 'false'
 );
@@ -497,7 +498,7 @@ if ( $show_popup ) :
 (function(){
     var popup = document.getElementById("%1$s");
     if (!popup) return;
-    var KEY = "pslider_popup_shown_%2$s";
+    var KEY = "pslider_popup_shown_%2$d";
     var section = document.querySelector(\'[data-popup-id="%1$s"]\');
     if (!section) return;
 
@@ -571,7 +572,7 @@ if ( $show_popup ) :
     }
 })();',
         $popup_id,
-        $uid
+        $instance
     );
-    wp_add_inline_script( 'theme-js-bundle', $popup_js );
+    wp_add_inline_script( 'swiper', $popup_js );
 endif;

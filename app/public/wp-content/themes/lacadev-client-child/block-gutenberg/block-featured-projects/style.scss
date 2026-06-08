@@ -14,7 +14,6 @@
         padding: 0 2rem;
 
         @include maxWidth($sm) {
-            gap: 2rem;
             padding: 0;
         }
     }
@@ -26,6 +25,16 @@
         padding-top: 1rem;
     }
 
+    &__title {
+        color: $secondColor;
+        font-weight: 900;
+        line-height: 1.1;
+        text-transform: uppercase;
+        margin: 0 0 4rem;
+
+        @include resFont(2, 3.2);
+    }
+
     &__badges {
         display: flex;
         justify-content: space-between;
@@ -35,7 +44,6 @@
         margin-bottom: 3.2rem;
 
         @include maxWidth($sm) {
-            margin-bottom: 0;
             justify-content: center;
         }
     }
@@ -49,26 +57,21 @@
     }
 
     &__badge-label {
-        display: block;
         text-transform: uppercase;
         color: #fff;
         font-weight: 600;
         letter-spacing: 0.05em;
-        font-size: rem(24);
-
-        @include maxWidth($md) {
-            font-size: rem(18);
-        }
+        
+        @include resFont(1.6, 1.8);
     }
 
     &__badge-sublabel {
-        display: block;
-        width: 100%;
         text-transform: uppercase;
-        text-align: center;
         color: #fff;
         font-weight: 400;
         letter-spacing: 0.05em;
+
+        @include resFont(1.4, 1.6);
     }
 
     &__cta {

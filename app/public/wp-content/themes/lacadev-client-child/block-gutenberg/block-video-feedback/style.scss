@@ -28,6 +28,8 @@
         color: $secondColor;
         font-weight: $regular;
         text-transform: uppercase;
+
+        @include resFont(1.2, 2.4);
     }
 
     // ── Swiper ────────────────────────────────────────────────────────────────
@@ -124,6 +126,8 @@
         color: $secondColor;
         border-bottom-left-radius: 1.2rem;
         border-bottom-right-radius: 1.2rem;
+
+        @include resFont(1.4, 1.6);
     }
 
     // ── Dot pagination ────────────────────────────────────────────────────────
@@ -238,37 +242,65 @@
     to   { opacity: 1; transform: scale(1)   translateY(0); }
 }
 
-// ── Editor canvas preview ─────────────────────────────────────────────────────
-.block-editor-block-list__block .block-video-feedback__preview-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-    gap: 2rem;
-}
+// ── Editor canvas preview: static grid, no Swiper in admin ───────────────────
+.editor-styles-wrapper .block-video-feedback--editor-preview {
+    .header-section {
+        margin-bottom: 5rem;
 
-.block-video-feedback__preview-item { margin: 0; }
+        .heading {
+            color: $secondColor;
+            font-weight: $bold;
+            text-transform: uppercase;
+            margin: 0;
 
-.block-video-feedback__thumb-wrap {
-    position: relative;
-    aspect-ratio: 9 / 16;
-    overflow: hidden;
-    border-radius: .8rem;
-    background: #eee;
-
-    img { width: 100%; height: 100%; object-fit: cover; }
-
-    .block-video-feedback__play {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        font-size: 2.4rem;
-        color: #f00;
+            @include resFont(2.4, 3.6);
+        }
     }
 
-    &--empty {
+    .block-video-feedback__editor-grid {
+        display: grid;
+        grid-template-columns: repeat(var(--vfb-preview-cols, 4), minmax(0, 1fr));
+        align-items: start;
+        max-width: 117rem;
+        margin: 0 auto;
+
+        @include maxWidth($lg) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        @include maxWidth($sm) {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .block-video-feedback__editor-card {
+        position: relative;
+        margin: 0;
+        border-radius: 1.2rem;
+        overflow: hidden;
+        background: #383838;
+    }
+
+    .block-video-feedback__item {
+        cursor: default;
+    }
+
+    .block-video-feedback__play {
+        cursor: default;
+    }
+
+    .block-video-feedback__empty-thumb {
         display: flex;
+        min-height: 22rem;
         align-items: center;
         justify-content: center;
-        color: #aaa;
+        color: rgba(255,255,255,.7);
         font-size: 1.4rem;
+    }
+
+    .block-video-feedback__editor-empty {
+        color: rgba(255,255,255,.72);
+        text-align: center;
+        padding: 3rem 2rem;
     }
 }

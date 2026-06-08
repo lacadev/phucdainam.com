@@ -26,6 +26,8 @@
         color: $secondColor;
         font-weight: $regular;
         text-transform: uppercase;
+
+        @include resFont(1.2, 2.4);
     }
 
     // ── Grid 2 cột ──────────────────────────────────────────────────────────

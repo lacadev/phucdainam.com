@@ -27,6 +27,11 @@ add_action('login_head', 'app_action_add_favicon', 5);
 add_action('admin_head', 'app_action_add_favicon', 5);
 add_filter('upload_dir', 'app_filter_fix_upload_dir_url_schema');
 
+/** Media modal: keep "Load more" pagination (WP default) so admin JS can trigger it on scroll.
+ *  When media_library_infinite_scrolling is true, core hides the button and uses its own scroll loading.
+ */
+add_filter('media_library_infinite_scrolling', '__return_false', 9999);
+
 /**
  * Content
  */

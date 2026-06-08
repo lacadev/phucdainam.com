@@ -21,6 +21,16 @@ function child_enqueue_frontend_assets()
     $child_version = wp_get_theme()->get('Version');
     $child_dir_uri = dirname(get_stylesheet_directory_uri());
 
+	// ------------------------------------------------------------------
+    // Theme style.css (cho phép viết CSS trực tiếp vào theme/style.css)
+    // ------------------------------------------------------------------
+    wp_enqueue_style(
+        'child-style',
+        get_stylesheet_uri(),
+        ['theme-css-bundle'], // load sau parent CSS
+        $child_version
+    );
+	
     // ------------------------------------------------------------------
     // CSS override từ resources/ (dùng khi không có build step)
     // ------------------------------------------------------------------

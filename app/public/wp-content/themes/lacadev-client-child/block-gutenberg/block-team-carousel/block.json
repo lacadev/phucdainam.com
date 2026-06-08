@@ -48,14 +48,6 @@
             "type": "string",
             "default": "#ffffff"
         },
-        "labelBg": {
-            "type": "string",
-            "default": "#F5C518"
-        },
-        "labelColor": {
-            "type": "string",
-            "default": "#1a1a1a"
-        },
         "bgOpacity": {
             "type": "number",
             "default": 100

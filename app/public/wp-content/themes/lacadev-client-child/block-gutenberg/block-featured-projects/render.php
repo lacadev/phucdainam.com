@@ -18,7 +18,7 @@ $bg_rgba = 'rgba(' . $r . ',' . $g . ',' . $b . ',' . ( $bg_opacity / 100 ) . ')
  */
 
 
-$heading = esc_html( $attributes['sectionTitle'] ?? 'DỰ ÁN BIỂU TƯỢNG' );
+$section_title = esc_html( $attributes['sectionTitle'] ?? 'DỰ ÁN BIỂU TƯỢNG' );
 $badges        = $attributes['badges']          ?? [];
 $cta_text      = esc_html( $attributes['ctaText'] ?? '' );
 $cta_url       = esc_url( $attributes['ctaUrl']   ?? '' );
@@ -59,17 +59,12 @@ $query = new WP_Query( $query_args );
     <div class="block-featured-projects__inner">
 
         <div class="block-featured-projects__left">
-             <!-- HEADER -->
-        <div class="header-section" data-aos="fade-up">
-            <?php 
-            if ( $heading ) :
-                echo '<h2 class="heading">' . $heading . '</h2>';
-            endif;
-            ?>
-        </div>
+            <?php if ( $section_title ) : ?>
+                <h2 class="block-featured-projects__title"><?php echo $section_title; ?></h2>
+            <?php endif; ?>
 
             <?php if ( ! empty( $badges ) ) : ?>
-                <div class="block-featured-projects__badges" data-aos="fade-up">
+                <div class="block-featured-projects__badges">
                     <?php foreach ( $badges as $badge ) : ?>
                         <div class="block-featured-projects__badge">
                             <span class="block-featured-projects__badge-label"><?php echo esc_html( $badge['label'] ?? '' ); ?></span>
@@ -93,15 +88,8 @@ $query = new WP_Query( $query_args );
                 $post_link = esc_url( get_permalink() );
                 $post_title = esc_attr( get_the_title() );
                 $thumb_url  = get_the_post_thumbnail_url( $post_id, 'large' );
-                // Stagger AOS: each card +100ms so animations run in sequence.
-                $aos_delay_ms = ( $count - 1 ) * 200;
                 ?>
-                <a
-                    href="<?php echo $post_link; ?>"
-                    class="block-featured-projects__project"
-                    data-aos="fade-up"
-                    data-aos-delay="<?php echo esc_attr( (string) $aos_delay_ms ); ?>"
-                >
+                <a href="<?php echo $post_link; ?>" class="block-featured-projects__project">
                     <?php if ( $thumb_url ) : ?>
                         <img
                             class="block-featured-projects__img"

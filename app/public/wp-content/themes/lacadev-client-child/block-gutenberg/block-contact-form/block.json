@@ -1,0 +1,29 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "lacadev/contact-form-block",
+    "version": "1.0.0",
+    "title": "Contact Form Block",
+    "category": "lacadev-blocks",
+    "description": "Hiển thị form liên hệ được tạo từ Contact Form Manager.",
+    "icon": "email",
+    "editorScript": "block-block-contact-form-editor",
+    "textdomain": "laca",
+    "supports": {
+        "html": false
+    },
+    "attributes": {
+        "formId": {
+            "type": "number",
+            "default": 0
+        },
+        "heading": {
+            "type": "string",
+            "default": "Liên hệ với chúng tôi"
+        },
+        "subheading": {
+            "type": "string",
+            "default": "Chúng tôi sẽ phản hồi bạn trong thời gian sớm nhất."
+        }
+    }
+}

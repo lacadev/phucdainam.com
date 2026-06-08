@@ -27,13 +27,25 @@ $autoplay_delay = intval( $attributes['autoplayDelay'] ?? 3000 );
 $space_between  = intval( $attributes['spaceBetween'] ?? 24 );
 $inactive_scale = max( 40, min( 95, intval( $attributes['inactiveScale'] ?? 60 ) ) );
 $bg_color       = sanitize_hex_color( $attributes['bgColor'] ?? '' ) ?: '#1a1a1a';
-$label_bg       = sanitize_hex_color( $attributes['labelBg'] ?? '' ) ?: '#F5C518';
-$label_color    = sanitize_hex_color( $attributes['labelColor'] ?? '' ) ?: '#1a1a1a';
 
-$slides = array_values( array_filter( $slides, fn( $s ) => ! empty( $s['imageUrl'] ) || ! empty( $s['label'] ) ) );
+$slides = array_values( array_filter( $slides, fn( $s ) => ! empty( $s['imageUrl'] ) ) );
 
 if ( empty( $slides ) ) return;
 $slides_count = count( $slides );
+
+// When "loop" is on: duplicate last + first in markup and disable Swiper loop (stable order + layout with slidesPerView "auto").
+$slides_for_markup = $slides;
+$swiper_initial    = 0;
+$swiper_buffered   = false;
+if ( $loop && $slides_count > 1 ) {
+    $slides_for_markup = array_merge(
+        [ $slides[ $slides_count - 1 ] ],
+        $slides,
+        [ $slides[0] ]
+    );
+    $swiper_initial  = 1;
+    $swiper_buffered = true;
+}
 
 // ── Unique ID per instance ─────────────────────────────────────────────────
 static $tc_instance = 0;
@@ -55,7 +67,7 @@ $scale_ratio_css = round( $inactive_scale / 100, 2 );
 <section <?php echo get_block_wrapper_attributes( [
     'class' => 'block-team-carousel',
     'style' => 'background:' . esc_attr( $bg_color ) . ';',
-] ); ?> data-aos="fade-up">
+] ); ?>>
 
     <?php if ( $section_title ) : ?>
         <div class="container">
@@ -65,10 +77,9 @@ $scale_ratio_css = round( $inactive_scale / 100, 2 );
 
     <div class="swiper block-team-carousel__swiper" id="<?php echo esc_attr( $swiper_id ); ?>">
         <div class="swiper-wrapper">
-            <?php foreach ( $slides as $slide ) :
+            <?php foreach ( $slides_for_markup as $slide ) :
                 $img_url = esc_url( $slide['imageUrl'] ?? '' );
-                $img_alt = esc_attr( $slide['imageAlt'] ?? $slide['label'] ?? '' );
-                $label   = esc_html( $slide['label'] ?? '' );
+                $img_alt = esc_attr( $slide['imageAlt'] ?? '' );
             ?>
                 <div class="swiper-slide block-team-carousel__slide">
                     <div class="block-team-carousel__slide-inner">
@@ -76,20 +87,11 @@ $scale_ratio_css = round( $inactive_scale / 100, 2 );
                             <img
                                 src="<?php echo $img_url; ?>"
                                 alt="<?php echo $img_alt; ?>"
-                                loading="lazy"
+                                loading="<?php echo $swiper_buffered ? 'eager' : 'lazy'; ?>"
                                 class="block-team-carousel__img"
                             />
                         <?php else : ?>
                             <div class="block-team-carousel__no-image"></div>
-                        <?php endif; ?>
-
-                        <?php if ( $label ) : ?>
-                            <div
-                                class="block-team-carousel__label"
-                                style="background:<?php echo esc_attr( $label_bg ); ?>;color:<?php echo esc_attr( $label_color ); ?>;"
-                            >
-                                <?php echo $label; ?>
-                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -116,112 +118,104 @@ $scale_ratio_css = round( $inactive_scale / 100, 2 );
 // Inline hardening styles to prevent third-party Swiper/global CSS overrides.
 // Scoped by instance id so each block is isolated.
 $instance_style = sprintf(
-    '#%1$s .swiper-slide{width:clamp(240px,32vw,400px);height:clamp(320px,44vw,540px);flex-shrink:0;}#%1$s .block-team-carousel__slide-inner{transform:scale(var(--tc-inactive-scale,0.62));transition:transform .5s cubic-bezier(.25,.46,.45,.94);}#%1$s .swiper-slide-active .block-team-carousel__slide-inner{transform:scale(1);}',
+    '#%1$s .swiper-slide{box-sizing:border-box;height:clamp(280px,38vw,520px);flex-shrink:0;}#%1$s .block-team-carousel__slide-inner{transform:scale(var(--tc-inactive-scale,0.62));transition:transform .5s cubic-bezier(.25,.46,.45,.94);}#%1$s .swiper-slide-active .block-team-carousel__slide-inner{transform:scale(1);}',
     $swiper_id
 );
 wp_add_inline_style( 'swiper', $instance_style );
 
 // ── Inline Swiper init ─────────────────────────────────────────────────────
-// Scale effect is handled by CSS .swiper-slide-active selector.
-// Use rewind to keep order deterministic without loop clones.
+// Never use Swiper loop with slidesPerView "auto" (reorders DOM / gaps). Buffered markup + slideChangeTransitionEnd handles infinite scroll.
+// slidesPerView: up to 3 from 992px (numeric width); below 992 uses 2 / 1.15 so slides are not squeezed by fixed clamp widths.
+// Without buffer: rewind wraps prev/next when loop attribute is off.
 // If inactiveScale differs from CSS default (62%), inject a custom property.
 $scale_override = '';
 if ( $inactive_scale !== 62 ) {
     $scale_override = sprintf(
-        'document.getElementById("%s").style.setProperty("--tc-inactive-scale", "%s");',
-        $swiper_id,
-        $scale_ratio_css
+        'el.style.setProperty("--tc-inactive-scale", "%s");',
+        esc_js( (string) $scale_ratio_css )
     );
 }
 
-$js = sprintf( '
-(function () {
-    var swiperInstance = null;
-    var resizeTimer = null;
-    var desktopMq = window.matchMedia("(min-width: 992px)");
-    var lastDesktop = desktopMq.matches;
+$js_rewind = ( ! $loop && ! $swiper_buffered && $slides_count > 1 ) ? 'true' : 'false';
+$js_autoplay = ( $autoplay && $slides_count > 0 )
+    ? sprintf(
+        'autoplay:{delay:%d,disableOnInteraction:false,pauseOnMouseEnter:true,waitForTransition:true},',
+        $autoplay_delay
+    )
+    : '';
 
-    function mount_%1$s(forceFirstSlide) {
+$js_swiper_on = '';
+if ( $swiper_buffered ) {
+    $js_swiper_on = sprintf(
+        'on: {
+                slideChangeTransitionEnd: function (swiper) {
+                    var n = %d;
+                    var i = swiper.activeIndex;
+                    if (i === 0) {
+                        swiper.slideTo(n, 0, false);
+                    } else if (i === n + 1) {
+                        swiper.slideTo(1, 0, false);
+                    }
+                }
+            },
+',
+        $slides_count
+    );
+}
+
+$js = sprintf(
+    '(function () {
+    var rootId = %1$s;
+    function mountTeamCarousel() {
         if (typeof Swiper === "undefined") {
-            setTimeout(function () { mount_%1$s(forceFirstSlide); }, 80);
+            setTimeout(mountTeamCarousel, 50);
             return;
         }
-        var el = document.getElementById("%2$s");
+        var el = document.getElementById(rootId);
         if (!el) return;
-
-        // Reset previous instance to avoid broken order after viewport changes.
-        if (swiperInstance && typeof swiperInstance.destroy === "function") {
-            swiperInstance.destroy(true, true);
-        }
         if (el.swiper && typeof el.swiper.destroy === "function") {
             el.swiper.destroy(true, true);
         }
-
-        %3$s
-        swiperInstance = new Swiper("#%2$s", {
-            slidesPerView: 1.35,
+        %2$s
+        new Swiper(el, {
+            slidesPerView: 1.15,
             centeredSlides: true,
-            spaceBetween: %4$d,
-            loop: false,
-            rewind: %5$s,
-            watchOverflow: false,
-            observer: true,
-            observeParents: true,
+            centerInsufficientSlides: true,
+            spaceBetween: 16,
             speed: 500,
-            initialSlide: 0,
             breakpoints: {
-                768:  { slidesPerView: 2.2, centeredSlides: true },
-                1200: { slidesPerView: 3,   centeredSlides: true }
+                640: { slidesPerView: 2, spaceBetween: %3$d },
+                992: { slidesPerView: 3, spaceBetween: %3$d }
             },
+            loop: false,
+            rewind: %4$s,
+            initialSlide: %5$d,
+            watchOverflow: false,
+            watchSlidesProgress: true,
+            roundLengths: true,
+            observer: false,
+            observeParents: false,
             %6$s
+            %7$s
             navigation: {
-                nextEl: "#%2$s .swiper-button-next",
-                prevEl: "#%2$s .swiper-button-prev"
+                nextEl: "#" + rootId + " .swiper-button-next",
+                prevEl: "#" + rootId + " .swiper-button-prev"
             }
         });
-
-        // Always anchor on first slide to keep order deterministic.
-        if (forceFirstSlide) {
-            swiperInstance.slideTo(0, 0, false);
-        }
     }
-
-    function onViewportChange_%1$s() {
-        var isDesktop = desktopMq.matches;
-        if (isDesktop !== lastDesktop) {
-            lastDesktop = isDesktop;
-            mount_%1$s(true);
-            return;
-        }
-        if (swiperInstance && typeof swiperInstance.update === "function") {
-            swiperInstance.update();
-        }
-    }
-
-    if (desktopMq.addEventListener) {
-        desktopMq.addEventListener("change", onViewportChange_%1$s);
-    } else if (desktopMq.addListener) {
-        desktopMq.addListener(onViewportChange_%1$s);
-    }
-
-    window.addEventListener("resize", function () {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(onViewportChange_%1$s, 120);
-    });
-
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () { mount_%1$s(true); });
+        document.addEventListener("DOMContentLoaded", mountTeamCarousel);
     } else {
-        mount_%1$s(true);
+        mountTeamCarousel();
     }
 })();',
-    $tc_instance,                                  // %1$s — unique fn suffix
-    $swiper_id,                                    // %2$s — swiper id
-    $scale_override,                               // %3$s — optional CSS var override
-    $space_between,                                // %4$d — spaceBetween
-    $loop ? 'true' : 'false',                      // %5$s — rewind
-    $autoplay                                      // %6$s — optional autoplay
-        ? sprintf( 'autoplay:{delay:%d,disableOnInteraction:false,pauseOnMouseEnter:true},', $autoplay_delay )
-        : ''
+    wp_json_encode( $swiper_id ),
+    $scale_override,
+    $space_between,
+    $js_rewind,
+    (int) $swiper_initial,
+    $js_autoplay,
+    $js_swiper_on
 );
 wp_add_inline_script( 'swiper', $js );
+
