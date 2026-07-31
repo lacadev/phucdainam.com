@@ -9,8 +9,6 @@ use App\Settings\LacaTools\Management\ListTableEnhancements;
 use App\Settings\LacaTools\Management\AdminUxService;
 use App\Settings\LacaTools\Management\DatabaseCleaner;
 use App\Settings\LacaTools\Management\QuickNotesWidget;
-use App\Settings\LacaTools\Management\PerformanceBudgetWidget;
-use App\Settings\LacaTools\Management\ClientOperationsPage;
 
 /**
  * ManagementExperience
@@ -63,9 +61,6 @@ class ManagementExperience
         // 8. Database Cleaner (Appearance > Dọn dẹp DB)
         (new DatabaseCleaner())->register();
 
-        // 9b. Performance Budget widget (CWV + bundle sizes)
-        (new PerformanceBudgetWidget())->register();
-
         // 9. AI Translation Manager
         add_action('init', function () {
             new AITranslationManager();
@@ -76,8 +71,5 @@ class ManagementExperience
 
         // 11. Contact Form Manager (Appearance > Form Liên Hệ)
         new \App\Features\ContactForm\ContactFormManager();
-
-        // 12. Client operations, support requests and tracker delivery audit
-        (new ClientOperationsPage())->register();
     }
 }

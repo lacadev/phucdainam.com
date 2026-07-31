@@ -50,6 +50,10 @@ class DatabaseCleaner
         ?>
         <div class="wrap">
             <h1>🧹 Dọn dẹp Database</h1>
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:14px 16px;margin:8px 0">
+                <p style="margin:0 0 8px;font-weight:600;color:#0369a1">🔧 Dọn dẹp Database</p>
+                <p style="margin:0;font-size:13px;color:#374151">Xoá bớt dữ liệu rác (bản nháp, thùng rác, bình luận spam, bản chỉnh sửa cũ...) tích tụ theo thời gian để website chạy nhanh hơn. Đây là thao tác dọn dẹp và <strong>không thể hoàn tác</strong> — hãy đọc kỹ từng mục trước khi bấm "Dọn dẹp".</p>
+            </div>
             <p style="color:#666">Xoá dữ liệu rác để database gọn nhẹ hơn. Mỗi thao tác không thể hoàn tác — hãy backup trước nếu cần.</p>
 
             <div id="laca-db-analyzer" style="margin:15px 0;padding:12px 16px;background:#fff;border:1px solid #c3c4c7;border-radius:4px;display:none">

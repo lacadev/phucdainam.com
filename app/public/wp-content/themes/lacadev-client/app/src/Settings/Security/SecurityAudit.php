@@ -95,14 +95,14 @@ class SecurityAudit
             $loginHidden ? 'pass' : 'warn',
             $loginHidden ? "URL login tùy chỉnh: /$loginSlug"
                          : 'URL /wp-login.php mặc định còn active — dễ bị bot brute force tìm thấy.',
-            6, admin_url('admin.php?page=laca-security&tab=login'));
+            6, admin_url('themes.php?page=laca-security'));
 
         $twoFaOn = get_option('laca_2fa_master_enabled', 0);
         $add($cat, '2fa', 'Xác thực 2 bước (2FA TOTP) được bật',
             $twoFaOn ? 'pass' : 'warn',
             $twoFaOn ? '2FA đang bật — tài khoản được bảo vệ kể cả khi mất mật khẩu.'
                      : '2FA chưa bật — nên bật để tăng cường bảo mật.',
-            6, admin_url('admin.php?page=laca-security&tab=2fa'));
+            6, admin_url('themes.php?page=laca-security'));
 
         // ── 3. Access Control & Privacy ──────────────────────────────────────
         $cat = 'Kiểm soát truy cập & Riêng tư';

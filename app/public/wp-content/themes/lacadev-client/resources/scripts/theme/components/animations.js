@@ -4,51 +4,6 @@
  */
 
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-export function initAnimations() {
-	gsap.registerPlugin( ScrollTrigger );
-	gsap.from( '.block-title-scroll', {
-		x: '50%',
-		duration: 2,
-		opacity: 0.3,
-		scrollTrigger: {
-			trigger: '.block-title-scroll',
-			start: 'top 80%',
-			end: 'bottom 20%',
-			scrub: true,
-		},
-	} );
-}
-
-export function animateText() {
-	const elements = document.querySelectorAll( '.slogan p' );
-
-	if ( typeof SplitText === 'undefined' ) {
-		return;
-	}
-
-	elements.forEach( element => {
-		new SplitText( element, {
-			type: 'lines, chars',
-			linesClass: 'anim_line',
-			charsClass: 'anim_char',
-			wordsClass: 'anim_word',
-		} );
-
-		gsap.fromTo(
-			element.querySelectorAll( '.anim_char' ),
-			{ y: '100%', autoAlpha: 0 },
-			{
-				y: '0%',
-				autoAlpha: 1,
-				duration: 0.8,
-				stagger: 0.01,
-				ease: 'power2.out',
-			}
-		);
-	} );
-}
 
 export function setupGsap404() {
 	gsap.set( 'svg', { visibility: 'visible' } );

@@ -4,7 +4,7 @@
  * 
  * Comprehensive performance enhancements for maximum PageSpeed Insights scores
  *
- * @package MoomsDev
+ * @package lacadev
  * @since 1.0.0
  */
 
@@ -246,7 +246,7 @@ class ThemePerformance
      */
     public static function add_performance_monitoring()
     {
-        if ( ! is_admin() && defined('WP_DEBUG') && WP_DEBUG ) {
+        if (!is_admin() && defined('WP_DEBUG') && WP_DEBUG) {
             add_action('wp_enqueue_scripts', function () {
                 wp_enqueue_script(
                     'laca-web-vitals',

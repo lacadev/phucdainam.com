@@ -8,4 +8,13 @@
  * @package WPEmergeTheme
  */
 ?>
-</div></div><?php wp_footer(); ?></body></html>
+
+</div><!-- container end -->
+</div>
+<!-- container-wrapper end -->
+
+
+<?php wp_footer(); ?>
+</body>
+
+</html>

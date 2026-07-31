@@ -20,8 +20,6 @@ class MaintenanceModeManager
 {
     const OPT_ACTIVE    = 'laca_maintenance_mode';
     const OPT_WHITELIST = 'laca_maintenance_ip_whitelist';
-    const OPT_AUTO_OWNER = 'laca_maintenance_auto_owner';
-    const TRANSIENT_AUTO_OWNER = 'laca_maintenance_auto_owner';
     const NONCE         = 'laca_maintenance_toggle';
 
     public function init(): void
@@ -49,8 +47,6 @@ class MaintenanceModeManager
 
     public function maybeShowMaintenance(): void
     {
-        self::maybeExpireTemporaryMode();
-
         if (!get_option(self::OPT_ACTIVE)) {
             return;
         }
@@ -92,7 +88,6 @@ class MaintenanceModeManager
             return;
         }
 
-        self::maybeExpireTemporaryMode();
         $isActive = (bool) get_option(self::OPT_ACTIVE);
         $nonce    = wp_create_nonce(self::NONCE);
 
@@ -176,8 +171,6 @@ class MaintenanceModeManager
 
     public function renderAdminNotice(): void
     {
-        self::maybeExpireTemporaryMode();
-
         if (!get_option(self::OPT_ACTIVE) || !current_user_can('manage_options')) {
             return;
         }
@@ -205,48 +198,5 @@ class MaintenanceModeManager
             }
         }
         return '';
-    }
-
-    public static function activateTemporary(string $owner, int $ttl = 1800): bool
-    {
-        $owner = sanitize_key($owner);
-        if ($owner === '') {
-            return false;
-        }
-
-        if (get_option(self::OPT_ACTIVE)) {
-            return false;
-        }
-
-        update_option(self::OPT_ACTIVE, '1', false);
-        update_option(self::OPT_AUTO_OWNER, $owner, false);
-        set_transient(self::TRANSIENT_AUTO_OWNER, $owner, max(60, $ttl));
-
-        return true;
-    }
-
-    public static function deactivateTemporary(string $owner): void
-    {
-        $owner = sanitize_key($owner);
-        $activeOwner = (string) get_option(self::OPT_AUTO_OWNER, '');
-
-        if ($owner !== '' && $activeOwner === $owner) {
-            update_option(self::OPT_ACTIVE, '0', false);
-            delete_option(self::OPT_AUTO_OWNER);
-            delete_transient(self::TRANSIENT_AUTO_OWNER);
-        }
-    }
-
-    public static function maybeExpireTemporaryMode(): void
-    {
-        $activeOwner = (string) get_option(self::OPT_AUTO_OWNER, '');
-        if ($activeOwner === '') {
-            return;
-        }
-
-        if (!get_transient(self::TRANSIENT_AUTO_OWNER)) {
-            update_option(self::OPT_ACTIVE, '0', false);
-            delete_option(self::OPT_AUTO_OWNER);
-        }
     }
 }

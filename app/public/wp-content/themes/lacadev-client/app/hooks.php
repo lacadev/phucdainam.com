@@ -27,10 +27,24 @@ add_action('login_head', 'app_action_add_favicon', 5);
 add_action('admin_head', 'app_action_add_favicon', 5);
 add_filter('upload_dir', 'app_filter_fix_upload_dir_url_schema');
 
-/** Media modal: keep "Load more" pagination (WP default) so admin JS can trigger it on scroll.
- *  When media_library_infinite_scrolling is true, core hides the button and uses its own scroll loading.
+/**
+ * Keep Laca Admin submenu grouped and ordered from one place.
  */
-add_filter('media_library_infinite_scrolling', '__return_false', 9999);
+add_action('init', function () {
+    if (class_exists('\App\Settings\LacaAdmin\LacaAdminMenuOrganizer')) {
+        (new \App\Settings\LacaAdmin\LacaAdminMenuOrganizer())->register();
+    }
+});
+
+/**
+ * Xếp mọi custom post type (tĩnh lẫn tạo qua Dynamic CPT) nằm liền kề
+ * ngay sau "Laca Theme" trong sidebar, thay vì rải rác theo menu_position.
+ */
+add_action('init', function () {
+    if (class_exists('\App\Settings\LacaAdmin\CptMenuGrouper')) {
+        (new \App\Settings\LacaAdmin\CptMenuGrouper())->register();
+    }
+});
 
 /**
  * Content
@@ -72,31 +86,50 @@ add_filter('login_message', 'app_login_google_admin_message');
 add_action('carbon_fields_register_fields', 'app_bootstrap_carbon_fields_register_fields');
 
 /**
- * Theme Updater — tự động check & nhận update từ lacadev.com
+ * Theme Updater — tự động check & nhận update từ clients.lacadev.com
  * Chỉ chạy ở admin để tiết kiệm tài nguyên frontend
  */
 if (is_admin()) {
     add_action('init', static function () {
-        new \App\Settings\ThemeUpdater();
+        new \App\Settings\ThemeUpdater(
+            'lacadev-client/theme',
+            'https://clients.lacadev.com/theme-updates/lacadev-client.json'
+        );
         new \App\Widgets\BlockSyncWidget();
 
-        if (class_exists('\App\Settings\LacaAdmin\LacaAdminMenuOrganizer')) {
-            (new \App\Settings\LacaAdmin\LacaAdminMenuOrganizer())->register();
+        // Block Marketplace — trang "Laca Theme → Block Marketplace" cho
+        // site khách browse + yêu cầu đồng bộ block từ clients.lacadev.com
+        // (qua hub). Chỉ cần đăng ký AJAX handler ở đây, phần render page
+        // được gọi trực tiếp từ theme-options.php (child theme).
+        if (class_exists('\App\Settings\BlockMarketplace')) {
+            new \App\Settings\BlockMarketplace();
         }
     });
 }
 
 /**
- * LacaDev Tracker Client — lightweight customer-site reporting.
- *
- * Must run outside wp-admin too so WP-Cron scans and REST remote-update routes
- * are available on normal WordPress requests.
+ * LacaDev Tracker Client — gửi logs & alerts về lacadev CMS.
+ * Phải đăng ký vô điều kiện (không bọc is_admin()) vì cron (wp-cron.php)
+ * và REST request (/laca/v1/remote-update) không đi qua wp-admin nên
+ * is_admin() luôn false ở đó — nếu bọc trong is_admin(), cron và route
+ * REST của tracker sẽ không bao giờ đăng ký được.
  */
 add_action('init', static function () {
-    if (class_exists('\App\Settings\LacaDevTrackerClient')) {
-        \App\Settings\LacaDevTrackerClient::register();
+    new \App\Settings\LacaDevTrackerClient();
+});
+
+/**
+ * Dọn cron mồ côi `laca_fim_scan` để lại sau khi gỡ App\Features\ClientTracker\Tracker
+ * (đã gộp chức năng theme_switched + FIM sâu vào LacaDevTrackerClient — xem
+ * doc/TRACKER_HUB_CLIENT_SYNC.md, Giai đoạn 3). Chỉ chạy 1 lần rồi tự đánh dấu,
+ * không chạy lại mỗi request.
+ */
+add_action('init', function () {
+    if (!get_option('_laca_tracker_fim_cron_cleaned')) {
+        wp_clear_scheduled_hook('laca_fim_scan');
+        update_option('_laca_tracker_fim_cron_cleaned', 1, false);
     }
-}, 5);
+}, 1);
 
 /**
  * Block Sync Receiver — REST API endpoint nhận blocks từ lacadev.com
@@ -108,6 +141,13 @@ add_action('init', static function () {
     // lacadev_child_register_synced_blocks() at init priority 15.
     // Having both causes duplicate "already registered" notices → "headers already sent" → admin 403/404.
     // new \App\Settings\BlockAutoloader();
+
+    // Block Catalog Provider — REST API đọc-chỉ phục vụ danh mục block cho
+    // hub (lacadev.com) đọc, dùng cho tính năng "site khách yêu cầu đồng bộ
+    // block". Chạy trên mọi site dùng theme này, tự bảo vệ bằng Catalog Key
+    // riêng — chỉ site nào có key đúng (clients.lacadev.com) mới thực sự được
+    // hub gọi tới trong thực tế.
+    new \App\Settings\BlockCatalogProvider();
 }, 5);
 
 /**

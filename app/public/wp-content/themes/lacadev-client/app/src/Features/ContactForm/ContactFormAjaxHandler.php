@@ -53,14 +53,6 @@ class ContactFormAjaxHandler
         $errors = [];
 
         foreach ($fields as $field) {
-            if (($field['type'] ?? '') === 'step_break') {
-                continue;
-            }
-
-            if (!self::isFieldConditionMatched($field, $_POST)) {
-                continue;
-            }
-
             $name     = $field['name'];
             $label    = $field['label'];
             $required = !empty($field['required']);
@@ -157,20 +149,6 @@ class ContactFormAjaxHandler
             add_action('wp_footer', [__CLASS__, 'printInlineCss'], 5);
         }
 
-        if (self::shouldRenderMultiStep($rawData, $styleSettings)) {
-            return $this->renderMultiStepForm(
-                $rawData,
-                $formId,
-                $nonce,
-                $ajaxUrl,
-                $extraClass,
-                $formElId,
-                $wrapId,
-                $styleSettings,
-                $scopedCss
-            );
-        }
-
         ob_start();
         ?>
         <?php if ($scopedCss): ?>
@@ -236,7 +214,7 @@ class ContactFormAjaxHandler
             </form>
         </div>
 
-        <script<?php echo self::getCspNonceAttribute(); ?>>
+        <script>
         (function() {
             const FORM_ID  = '<?php echo esc_js($formElId); ?>';
             const AJAX_URL = '<?php echo esc_js($ajaxUrl); ?>';
@@ -257,14 +235,16 @@ class ContactFormAjaxHandler
                     if (typeof window.Swal !== 'undefined') {
                         window.Swal.fire({ ...opts, ...getThemeColors() });
                     } else {
-                        // Fallback khi Swal chưa load: dùng banner trong form, không dùng native alert.
-                        const banner = formEl.querySelector('.laca-cf-fallback-msg');
-                        if (banner) {
-                            const type = opts.icon === 'success' ? 'success' : 'error';
-                            banner.className = 'laca-cf-fallback-msg laca-cf-fallback-msg--' + type;
-                            banner.textContent = opts.text || opts.title || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
-                            banner.hidden = false;
-                            banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        // Fallback khi Swal chưa load (SSR/cache edge cases)
+                        if (opts.icon === 'success') {
+                            const banner = formEl.querySelector('.laca-cf-fallback-msg');
+                            if (banner) {
+                                banner.className = 'laca-cf-fallback-msg laca-cf-fallback-msg--success';
+                                banner.textContent = opts.text || opts.title || 'Gửi thành công!';
+                                banner.hidden = false;
+                            }
+                        } else {
+                            alert((opts.title ? opts.title + '\n' : '') + (opts.text || ''));
                         }
                     }
                 };
@@ -292,144 +272,37 @@ class ContactFormAjaxHandler
                     formEl.querySelectorAll('.laca-cf-field-invalid').forEach(clearFieldError);
                 };
 
-                const getFieldValue = (name) => {
-                    const fields = Array.from(formEl.querySelectorAll('[name="' + name + '"], [name="' + name + '[]"]'));
-                    if (!fields.length) return '';
-                    if (fields[0].type === 'radio') {
-                        const checked = fields.find((field) => field.checked);
-                        return checked ? checked.value : '';
-                    }
-                    if (fields[0].type === 'checkbox') {
-                        return fields.filter((field) => field.checked).map((field) => field.value);
-                    }
-                    if (fields[0].tagName === 'SELECT' && fields[0].multiple) {
-                        return Array.from(fields[0].selectedOptions).map((option) => option.value);
-                    }
-                    return fields[0].value || '';
-                };
-
-                const conditionMatches = (row) => {
-                    const field = row.dataset.conditionField;
-                    if (!field) return true;
-                    const operator = row.dataset.conditionOperator || 'equals';
-                    const expected = row.dataset.conditionValue || '';
-                    const value = getFieldValue(field);
-                    const values = Array.isArray(value) ? value : [value];
-                    const valueString = values.join(', ');
-
-                    switch (operator) {
-                        case 'not_equals':
-                            return !values.includes(expected);
-                        case 'contains':
-                            return expected !== '' && valueString.includes(expected);
-                        case 'not_empty':
-                            return valueString.trim() !== '';
-                        case 'empty':
-                            return valueString.trim() === '';
-                        default:
-                            return values.includes(expected);
-                    }
-                };
-
-                const syncConditionalFields = () => {
-                    formEl.querySelectorAll('.laca-cf-form-row[data-condition-field]').forEach(function(row) {
-                        const visible = conditionMatches(row);
-                        row.classList.toggle('laca-cf-conditional-hidden', !visible);
-                        row.hidden = !visible;
-                        row.querySelectorAll('input, select, textarea').forEach(function(input) {
-                            input.disabled = !visible;
-                            if (!visible) {
-                                clearFieldError(input);
-                            }
-                        });
-                    });
-                };
-
                 // ── Client-side validation ────────────────────────────────────
 
-                const isPhoneValid = (value) => {
-                    const normalized = String(value || '').trim();
-                    const digits = normalized.replace(/\D/g, '');
-                    return /^\+?[0-9\s().-]+$/.test(normalized) && digits.length >= 8 && digits.length <= 15;
-                };
-
-                const getFieldLabel = (row) => {
-                    const label = row ? row.querySelector('.laca-cf-label') : null;
-                    return (label && label.textContent ? label.textContent.replace('*', '').trim() : '') || 'Trường này';
-                };
-
-                const getFormatError = (input, row) => {
-                    if (!input || input.disabled || input.type === 'hidden') return '';
-                    const value = String(input.value || '').trim();
-                    if (!value) return '';
-                    const label = getFieldLabel(row);
-
-                    if (input.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-                        return label + ' không hợp lệ.';
-                    }
-                    if (input.type === 'url' && input.validity && !input.validity.valid) {
-                        return label + ' không hợp lệ.';
-                    }
-                    if (input.type === 'tel' && !isPhoneValid(value)) {
-                        return label + ' không hợp lệ. Vui lòng nhập tối thiểu 8 chữ số.';
-                    }
-                    if (input.type === 'number' && (input.validity?.badInput || Number.isNaN(Number(value)))) {
-                        return label + ' phải là số hợp lệ.';
-                    }
-
-                    return '';
-                };
-
-                const isControlEmpty = (control) => {
-                    if (!control) return true;
-                    if (control.type === 'checkbox' || control.type === 'radio') {
-                        const row = control.closest('.laca-cf-form-row');
-                        return !row || !row.querySelector('input:checked');
-                    }
-                    if (control.tagName === 'SELECT' && control.multiple) {
-                        return control.selectedOptions.length === 0;
-                    }
-                    return !String(control.value || '').trim();
-                };
-
                 const validateForm = () => {
-                    syncConditionalFields();
                     clearAllErrors();
                     let valid = true;
-                    let firstInvalid = null;
 
-                    formEl.querySelectorAll('.laca-cf-form-row').forEach(function(row) {
-                        if (!row || row.hidden || row.classList.contains('laca-cf-conditional-hidden')) {
-                            return;
+                    formEl.querySelectorAll('[data-required="true"]').forEach(function(el) {
+                        let isEmpty;
+                        if (el.type === 'checkbox' || el.type === 'radio') {
+                            isEmpty = !formEl.querySelector('[name="' + el.name + '"]:checked');
+                        } else {
+                            isEmpty = !el.value.trim();
                         }
-
-                        const controls = Array.from(row.querySelectorAll('input, select, textarea')).filter(function(input) {
-                            return !input.disabled && input.type !== 'hidden';
-                        });
-                        if (!controls.length) {
-                            return;
-                        }
-
-                        const firstControl = controls[0];
-                        const isRequired = !!row.querySelector('[data-required="true"], [required]');
-                        if (isRequired && isControlEmpty(firstControl)) {
-                            showFieldError(firstControl, getFieldLabel(row) + ' là bắt buộc.');
-                            if (!firstInvalid) firstInvalid = firstControl;
+                        if (isEmpty) {
+                            showFieldError(el, 'Trường này là bắt buộc.');
                             valid = false;
                         }
-
-                        controls.forEach(function(input) {
-                            const message = getFormatError(input, row);
-                            if (!message) return;
-                            showFieldError(input, message);
-                            if (!firstInvalid) firstInvalid = input;
-                            valid = false;
-                        });
                     });
 
-                    if (firstInvalid && firstInvalid.focus) {
-                        firstInvalid.focus({ preventScroll: true });
-                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Email format check
+                    const emailEl = formEl.querySelector('input[type="email"]');
+                    if (emailEl && emailEl.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailEl.value.trim())) {
+                        showFieldError(emailEl, 'Email không hợp lệ.');
+                        valid = false;
+                    }
+
+                    // Phone format check (Vietnam)
+                    const phoneEl = formEl.querySelector('input[type="tel"]');
+                    if (phoneEl && phoneEl.value.trim() && !/^[0-9\s\+\-\(\)]{8,20}$/.test(phoneEl.value.trim())) {
+                        showFieldError(phoneEl, 'Số điện thoại không hợp lệ.');
+                        valid = false;
                     }
 
                     return valid;
@@ -438,11 +311,7 @@ class ContactFormAjaxHandler
                 // ── Real-time clear errors on input ───────────────────────────
 
                 formEl.querySelectorAll('input, select, textarea').forEach(function(el) {
-                    el.addEventListener('input', function() {
-                        clearFieldError(el);
-                        syncConditionalFields();
-                    });
-                    el.addEventListener('change', syncConditionalFields);
+                    el.addEventListener('input', function() { clearFieldError(el); });
                     el.addEventListener('blur', function() {
                         if (el.getAttribute('data-required') === 'true' && !el.value.trim()) {
                             showFieldError(el, 'Trường này là bắt buộc.');
@@ -451,8 +320,6 @@ class ContactFormAjaxHandler
                         }
                     });
                 });
-
-                syncConditionalFields();
 
                 // ── Submit handler ────────────────────────────────────────────
 
@@ -528,137 +395,12 @@ class ContactFormAjaxHandler
         return ob_get_clean();
     }
 
-    private function renderMultiStepForm(
-        array $rawData,
-        int $formId,
-        string $nonce,
-        string $ajaxUrl,
-        string $extraClass,
-        string $formElId,
-        string $wrapId,
-        array $styleSettings,
-        string $scopedCss
-    ): string {
-        $steps = self::splitRowsIntoSteps($rawData);
-        $totalSteps = max(1, count($steps));
-        $nextText = $styleSettings['step_next_text'] ?? 'Tiếp theo';
-        $prevText = $styleSettings['step_prev_text'] ?? 'Quay lại';
-        $submitText = $styleSettings['step_submit_text'] ?? ($styleSettings['btn_text'] ?? 'Gửi thông tin');
-
-        ob_start();
-        ?>
-        <?php if ($scopedCss): ?>
-        <style><?php echo $scopedCss; ?></style>
-        <?php endif; ?>
-        <div class="laca-contact-form-wrap laca-contact-form-wrap--multistep <?php echo esc_attr($extraClass); ?>" id="<?php echo esc_attr($wrapId); ?>">
-            <form class="laca-contact-form laca-contact-form--multistep" id="<?php echo esc_attr($formElId); ?>" novalidate data-total-steps="<?php echo esc_attr($totalSteps); ?>">
-                <input type="hidden" name="_nonce" value="<?php echo esc_attr($nonce); ?>">
-                <input type="hidden" name="form_id" value="<?php echo esc_attr($formId); ?>">
-                <input type="hidden" name="action" value="laca_contact_submit">
-                <?php if (function_exists('getOption') && getOption('enable_recaptcha_contact')): ?>
-                    <input type="hidden" name="laca_recaptcha_response" class="laca-recaptcha-response" value="">
-                <?php endif; ?>
-
-                <div class="laca-cf-step-progress" role="progressbar" aria-valuemin="1" aria-valuemax="<?php echo esc_attr($totalSteps); ?>" aria-valuenow="1">
-                    <div class="laca-cf-step-progress__track">
-                        <div class="laca-cf-step-progress__fill" style="width:<?php echo esc_attr((string) round(100 / $totalSteps)); ?>%"></div>
-                    </div>
-                    <ol class="laca-cf-step-list">
-                        <?php foreach ($steps as $index => $step): ?>
-                            <li class="laca-cf-step-dot <?php echo $index === 0 ? 'is-active' : ''; ?>" data-step-dot="<?php echo esc_attr((string) $index); ?>">
-                                <span><?php echo esc_html((string) ($index + 1)); ?></span>
-                                <strong><?php echo esc_html($step['label']); ?></strong>
-                            </li>
-                        <?php endforeach; ?>
-                    </ol>
-                </div>
-
-                <p class="laca-cf-step-notice" role="alert" aria-live="polite" hidden></p>
-
-                <?php foreach ($steps as $index => $step): ?>
-                    <section class="laca-cf-step-panel <?php echo $index === 0 ? 'is-active' : ''; ?>" data-step-panel="<?php echo esc_attr((string) $index); ?>" <?php echo $index === 0 ? '' : 'hidden'; ?>>
-                        <?php foreach ($step['rows'] as $row): ?>
-                            <?php $this->renderLayoutRow($row); ?>
-                        <?php endforeach; ?>
-                    </section>
-                <?php endforeach; ?>
-
-                <div class="laca-cf-step-actions">
-                    <button type="button" class="laca-cf-step-btn laca-cf-step-btn--prev" hidden><?php echo esc_html($prevText); ?></button>
-                    <button type="button" class="laca-cf-step-btn laca-cf-step-btn--next"><?php echo esc_html($nextText); ?></button>
-                    <button type="submit" class="laca-cf-submit-btn laca-cf-step-btn--submit" aria-busy="false" hidden>
-                        <span class="laca-cf-btn-text"><?php echo esc_html($submitText); ?></span>
-                        <span class="laca-cf-btn-loading" hidden aria-hidden="true">
-                            <svg class="laca-cf-spinner" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4" stroke-dashoffset="31.4"/>
-                            </svg>
-                            Đang gửi...
-                        </span>
-                    </button>
-                </div>
-                <p class="laca-cf-fallback-msg" role="status" aria-live="polite" hidden></p>
-            </form>
-        </div>
-        <?php $this->printMultiStepScript($formElId, $ajaxUrl); ?>
-        <?php
-        return ob_get_clean();
-    }
-
-    private function renderLayoutRow(array $row): void
-    {
-        $cols = $row['cols'] ?? [];
-        $hasAnyField = false;
-        foreach ($cols as $col) {
-            foreach ($col['fields'] ?? [] as $field) {
-                if (($field['type'] ?? '') !== 'step_break') {
-                    $hasAnyField = true;
-                    break 2;
-                }
-            }
-        }
-
-        if (!$hasAnyField) {
-            return;
-        }
-
-        $gridCols = implode(' ', array_map(
-            fn($c) => ((int) ($c['span'] ?? 12)) . 'fr',
-            $cols
-        ));
-        ?>
-        <div class="laca-cf-layout-row" style="display:grid;grid-template-columns:<?php echo esc_attr($gridCols); ?>;gap:12px;align-items:start">
-            <?php foreach ($cols as $col): ?>
-                <?php if (!empty($col['fields'])): ?>
-                    <div class="laca-cf-col-group" style="display:flex;flex-direction:column;gap:12px">
-                        <?php foreach ($col['fields'] as $field): ?>
-                            <?php $this->renderField($field); ?>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div></div>
-                <?php endif; ?>
-            <?php endforeach; ?>
-        </div>
-        <?php
-    }
-
     // =========================================================================
     // RENDER FIELD HELPERS
     // =========================================================================
 
-    public static function renderSingleField(array $field): string
-    {
-        ob_start();
-        (new self())->renderField($field);
-        return ob_get_clean();
-    }
-
     private function renderField(array $field): void
     {
-        if (($field['type'] ?? '') === 'step_break') {
-            return;
-        }
-
         $name        = esc_attr($field['name']);
         $label       = esc_html($field['label']);
         $placeholder = esc_attr($field['placeholder'] ?? '');
@@ -669,9 +411,8 @@ class ContactFormAjaxHandler
         $reqAttr     = $required ? 'required data-required="true"' : 'data-required="false"';
         $reqMark     = $required ? ' <span class="laca-cf-required" aria-hidden="true">*</span>' : '';
         $fieldId     = 'laca-cf-field-' . esc_attr($name) . '-' . uniqid('', true);
-        $conditionAttrs = self::buildConditionAttributes($field);
         ?>
-        <div class="laca-cf-form-row laca-cf-type-<?php echo esc_attr($type); ?> laca-cf-col-<?php echo esc_attr($colWidth); ?>"<?php echo $conditionAttrs; ?>>
+        <div class="laca-cf-form-row laca-cf-type-<?php echo esc_attr($type); ?> laca-cf-col-<?php echo esc_attr($colWidth); ?>">
             <?php if ($type !== 'hidden'): ?>
                 <label for="<?php echo esc_attr($fieldId); ?>" class="laca-cf-label">
                     <?php echo $label . $reqMark; ?>
@@ -758,12 +499,7 @@ class ContactFormAjaxHandler
                         'text'  => 'on',
                         default => 'off',
                     };
-                    $extraAttrs = match ($type) {
-                        'phone' => ' inputmode="tel" pattern="\\+?[0-9\\s().-]{8,24}" minlength="8" maxlength="24"',
-                        'number' => ' inputmode="decimal"',
-                        default => '',
-                    };
-                    echo '<input type="' . esc_attr($inputType) . '" id="' . esc_attr($fieldId) . '" name="' . $name . '" class="laca-cf-input" placeholder="' . $placeholder . '" autocomplete="' . esc_attr($autocomplete) . '" ' . $reqAttr . $extraAttrs . '>';
+                    echo '<input type="' . esc_attr($inputType) . '" id="' . esc_attr($fieldId) . '" name="' . $name . '" class="laca-cf-input" placeholder="' . $placeholder . '" autocomplete="' . esc_attr($autocomplete) . '" ' . $reqAttr . '>';
             }
             ?>
             <span class="laca-cf-field-error" hidden aria-live="polite"></span>
@@ -774,377 +510,6 @@ class ContactFormAjaxHandler
     // =========================================================================
     // INLINE CSS
     // =========================================================================
-
-    private function printMultiStepScript(string $formElId, string $ajaxUrl): void
-    {
-        ?>
-        <script<?php echo self::getCspNonceAttribute(); ?>>
-        (function() {
-            const SCRIPT_EL = document.currentScript;
-            const FORM_ID = '<?php echo esc_js($formElId); ?>';
-            const AJAX_URL = '<?php echo esc_js($ajaxUrl); ?>';
-
-            function boot() {
-                const scopedWrap = SCRIPT_EL ? SCRIPT_EL.previousElementSibling : null;
-                const formEl = scopedWrap && scopedWrap.querySelector
-                    ? scopedWrap.querySelector('#' + FORM_ID + '.laca-contact-form--multistep')
-                    : document.getElementById(FORM_ID);
-                if (!formEl) return;
-                if (formEl.dataset.lacaMultiStepReady === '1') return;
-                formEl.dataset.lacaMultiStepReady = '1';
-
-                const panels = Array.from(formEl.querySelectorAll('.laca-cf-step-panel'));
-                if (!panels.length) return;
-                const btnPrev = formEl.querySelector('.laca-cf-step-btn--prev');
-                const btnNext = formEl.querySelector('.laca-cf-step-btn--next');
-                const btnSubmit = formEl.querySelector('.laca-cf-step-btn--submit');
-                const notice = formEl.querySelector('.laca-cf-step-notice');
-                const fill = formEl.querySelector('.laca-cf-step-progress__fill');
-                const progress = formEl.querySelector('.laca-cf-step-progress');
-                let current = 0;
-
-                const getThemeColors = () => ({
-                    background: document.documentElement.getAttribute('data-theme') === 'dark' ? '#1a1a1a' : '#fff',
-                    color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#fff' : '#000',
-                });
-
-                const showSwal = (opts) => {
-                    if (typeof window.Swal !== 'undefined') {
-                        window.Swal.fire({ ...opts, ...getThemeColors() });
-                    } else {
-                        const banner = formEl.querySelector('.laca-cf-fallback-msg');
-                        if (banner) {
-                            const type = opts.icon === 'success' ? 'success' : 'error';
-                            banner.className = 'laca-cf-fallback-msg laca-cf-fallback-msg--' + type;
-                            banner.textContent = opts.text || opts.title || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
-                            banner.hidden = false;
-                            banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        }
-                    }
-                };
-
-                const showNotice = (message) => {
-                    if (!notice) return;
-                    notice.textContent = message;
-                    notice.hidden = false;
-                    notice.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                };
-
-                const clearNotice = () => {
-                    if (!notice) return;
-                    notice.textContent = '';
-                    notice.hidden = true;
-                };
-
-                const getFieldValue = (name) => {
-                    const fields = Array.from(formEl.querySelectorAll('[name="' + name + '"], [name="' + name + '[]"]'));
-                    if (!fields.length) return '';
-                    if (fields[0].type === 'radio') {
-                        const checked = fields.find((field) => field.checked);
-                        return checked ? checked.value : '';
-                    }
-                    if (fields[0].type === 'checkbox') {
-                        return fields.filter((field) => field.checked).map((field) => field.value);
-                    }
-                    if (fields[0].tagName === 'SELECT' && fields[0].multiple) {
-                        return Array.from(fields[0].selectedOptions).map((option) => option.value);
-                    }
-                    return fields[0].value || '';
-                };
-
-                const conditionMatches = (row) => {
-                    const field = row.dataset.conditionField;
-                    if (!field) return true;
-                    const operator = row.dataset.conditionOperator || 'equals';
-                    const expected = row.dataset.conditionValue || '';
-                    const value = getFieldValue(field);
-                    const values = Array.isArray(value) ? value : [value];
-                    const valueString = values.join(', ');
-
-                    switch (operator) {
-                        case 'not_equals':
-                            return !values.includes(expected);
-                        case 'contains':
-                            return expected !== '' && valueString.includes(expected);
-                        case 'not_empty':
-                            return valueString.trim() !== '';
-                        case 'empty':
-                            return valueString.trim() === '';
-                        default:
-                            return values.includes(expected);
-                    }
-                };
-
-                const syncConditionalFields = () => {
-                    formEl.querySelectorAll('.laca-cf-form-row[data-condition-field]').forEach((row) => {
-                        const visible = conditionMatches(row);
-                        row.classList.toggle('laca-cf-conditional-hidden', !visible);
-                        row.hidden = !visible;
-                        row.querySelectorAll('input, select, textarea').forEach((input) => {
-                            input.disabled = !visible;
-                            if (!visible) {
-                                input.classList.remove('laca-cf-field-invalid');
-                                input.setAttribute('aria-invalid', 'false');
-                                const err = row.querySelector('.laca-cf-field-error');
-                                if (err) {
-                                    err.textContent = '';
-                                    err.hidden = true;
-                                }
-                            }
-                        });
-                    });
-                };
-
-                const showFieldError = (fieldEl, message) => {
-                    if (!fieldEl) return;
-                    fieldEl.classList.add('laca-cf-field-invalid');
-                    fieldEl.setAttribute('aria-invalid', 'true');
-                    const row = fieldEl.closest('.laca-cf-form-row');
-                    const err = row ? row.querySelector('.laca-cf-field-error') : null;
-                    if (err) {
-                        err.textContent = message;
-                        err.hidden = false;
-                    }
-                };
-
-                const clearFieldError = (fieldEl) => {
-                    if (!fieldEl) return;
-                    fieldEl.classList.remove('laca-cf-field-invalid');
-                    fieldEl.setAttribute('aria-invalid', 'false');
-                    const row = fieldEl.closest('.laca-cf-form-row');
-                    const err = row ? row.querySelector('.laca-cf-field-error') : null;
-                    if (err) {
-                        err.textContent = '';
-                        err.hidden = true;
-                    }
-                };
-
-                const isPhoneValid = (value) => {
-                    const normalized = String(value || '').trim();
-                    const digits = normalized.replace(/\D/g, '');
-                    return /^\+?[0-9\s().-]+$/.test(normalized) && digits.length >= 8 && digits.length <= 15;
-                };
-
-                const getFieldLabel = (row) => {
-                    const label = row ? row.querySelector('.laca-cf-label') : null;
-                    return (label && label.textContent ? label.textContent.replace('*', '').trim() : '') || 'Trường này';
-                };
-
-                const getFormatError = (input, row) => {
-                    if (!input || input.disabled || input.type === 'hidden') return '';
-                    const value = String(input.value || '').trim();
-                    if (!value) return '';
-                    const label = getFieldLabel(row);
-
-                    if (input.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-                        return label + ' không hợp lệ.';
-                    }
-                    if (input.type === 'url' && input.validity && !input.validity.valid) {
-                        return label + ' không hợp lệ.';
-                    }
-                    if (input.type === 'tel' && !isPhoneValid(value)) {
-                        return label + ' không hợp lệ. Vui lòng nhập tối thiểu 8 chữ số.';
-                    }
-                    if (input.type === 'number' && (input.validity?.badInput || Number.isNaN(Number(value)))) {
-                        return label + ' phải là số hợp lệ.';
-                    }
-
-                    return '';
-                };
-
-                const isControlEmpty = (control) => {
-                    if (!control) return true;
-                    if (control.type === 'checkbox' || control.type === 'radio') {
-                        const row = control.closest('.laca-cf-form-row');
-                        return !row || !row.querySelector('input:checked');
-                    }
-                    if (control.tagName === 'SELECT' && control.multiple) {
-                        return control.selectedOptions.length === 0;
-                    }
-                    return !String(control.value || '').trim();
-                };
-
-                const validatePanel = (panel) => {
-                    syncConditionalFields();
-                    let valid = true;
-                    let firstInvalid = null;
-
-                    panel.querySelectorAll('.laca-cf-field-error').forEach((err) => {
-                        err.textContent = '';
-                        err.hidden = true;
-                    });
-                    panel.querySelectorAll('.laca-cf-field-invalid').forEach(clearFieldError);
-
-                    panel.querySelectorAll('.laca-cf-form-row').forEach((row) => {
-                        if (!row || row.hidden || row.classList.contains('laca-cf-conditional-hidden')) {
-                            return;
-                        }
-
-                        const controls = Array.from(row.querySelectorAll('input, select, textarea')).filter((input) => {
-                            return !input.disabled && input.type !== 'hidden';
-                        });
-                        if (!controls.length) {
-                            return;
-                        }
-
-                        const firstControl = controls[0];
-                        const isRequired = !!row.querySelector('[data-required="true"], [required]');
-                        if (isRequired && isControlEmpty(firstControl)) {
-                            showFieldError(firstControl, getFieldLabel(row) + ' là bắt buộc.');
-                            if (!firstInvalid) {
-                                firstInvalid = firstControl;
-                            }
-                            valid = false;
-                        }
-
-                        controls.forEach((input) => {
-                            const message = getFormatError(input, row);
-                            if (!message) return;
-                            showFieldError(input, message);
-                            if (!firstInvalid) {
-                                firstInvalid = input;
-                            }
-                            valid = false;
-                        });
-                    });
-
-                    if (firstInvalid) {
-                        firstInvalid.focus({ preventScroll: true });
-                        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-
-                    return valid;
-                };
-
-                const showStep = (step) => {
-                    panels.forEach((panel, index) => {
-                        const active = index === step;
-                        panel.hidden = !active;
-                        panel.classList.toggle('is-active', active);
-                    });
-
-                    btnPrev && (btnPrev.hidden = step === 0);
-                    btnNext && (btnNext.hidden = step >= panels.length - 1);
-                    btnSubmit && (btnSubmit.hidden = step < panels.length - 1);
-
-                    const pct = Math.round(((step + 1) / panels.length) * 100);
-                    if (fill) fill.style.width = pct + '%';
-                    if (progress) progress.setAttribute('aria-valuenow', String(step + 1));
-                    formEl.querySelectorAll('.laca-cf-step-dot').forEach((dot, index) => {
-                        dot.classList.toggle('is-active', index === step);
-                        dot.classList.toggle('is-done', index < step);
-                    });
-
-                    clearNotice();
-                    syncConditionalFields();
-
-                    const first = panels[step] ? panels[step].querySelector('input:not([type="hidden"]), select, textarea') : null;
-                    if (first) first.focus({ preventScroll: true });
-                };
-
-                formEl.querySelectorAll('input, select, textarea').forEach((el) => {
-                    el.addEventListener('input', () => {
-                        clearFieldError(el);
-                        syncConditionalFields();
-                    });
-                    el.addEventListener('change', syncConditionalFields);
-                });
-
-                const goNext = () => {
-                    if (!validatePanel(panels[current])) {
-                        showNotice('Vui lòng kiểm tra lại các trường được đánh dấu.');
-                        return;
-                    }
-                    current = Math.min(panels.length - 1, current + 1);
-                    showStep(current);
-                };
-
-                const goPrev = () => {
-                    current = Math.max(0, current - 1);
-                    showStep(current);
-                };
-
-                formEl.addEventListener('click', function(e) {
-                    const nextButton = e.target.closest('.laca-cf-step-btn--next');
-                    const prevButton = e.target.closest('.laca-cf-step-btn--prev');
-                    if (nextButton && formEl.contains(nextButton)) {
-                        e.preventDefault();
-                        goNext();
-                    }
-                    if (prevButton && formEl.contains(prevButton)) {
-                        e.preventDefault();
-                        goPrev();
-                    }
-                });
-
-                formEl.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    if (!validatePanel(panels[current])) {
-                        showNotice('Vui lòng kiểm tra lại các trường được đánh dấu.');
-                        return;
-                    }
-
-                    const btnText = btnSubmit.querySelector('.laca-cf-btn-text');
-                    const btnLoad = btnSubmit.querySelector('.laca-cf-btn-loading');
-                    btnSubmit.disabled = true;
-                    btnSubmit.setAttribute('aria-busy', 'true');
-                    btnText.hidden = true;
-                    btnLoad.hidden = false;
-
-                    fetch(AJAX_URL, {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        body: new FormData(formEl),
-                    })
-                    .then((res) => res.json())
-                    .then((json) => {
-                        if (json.success) {
-                            showSwal({
-                                title: 'Thành công',
-                                text: json.data.message || 'Cảm ơn bạn đã liên hệ. Chúng tôi sẽ phản hồi sớm nhất.',
-                                icon: 'success',
-                                confirmButtonText: 'Đóng',
-                            });
-                            formEl.reset();
-                            current = 0;
-                            showStep(current);
-                        } else {
-                            showSwal({
-                                title: 'Thất bại',
-                                html: '<p>' + ((json.data && json.data.message) ? json.data.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.') + '</p>',
-                                icon: 'error',
-                                confirmButtonText: 'Thử lại',
-                            });
-                        }
-                    })
-                    .catch(function() {
-                        showSwal({
-                            title: 'Lỗi kết nối',
-                            text: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.',
-                            icon: 'error',
-                            confirmButtonText: 'Đã hiểu',
-                        });
-                    })
-                    .finally(function() {
-                        btnSubmit.disabled = false;
-                        btnSubmit.setAttribute('aria-busy', 'false');
-                        btnText.hidden = false;
-                        btnLoad.hidden = true;
-                    });
-                });
-
-                showStep(0);
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', boot);
-            } else {
-                boot();
-            }
-        })();
-        </script>
-        <?php
-    }
 
     public static function printInlineCss(): void
     {
@@ -1189,32 +554,10 @@ class ContactFormAjaxHandler
         }
         .laca-cf-field-invalid { border-color: #d9534f !important; box-shadow: 0 0 0 3px rgba(217,83,79,.15) !important; }
         .laca-cf-field-error { color: #d9534f; font-size: 12px; margin-top: 2px; }
-        .laca-cf-conditional-hidden { display: none !important; }
         .laca-cf-radio-group, .laca-cf-checkbox-group { display: flex; flex-direction: column; gap: 8px; }
         .laca-cf-radio-label, .laca-cf-checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
         .laca-cf-multiselect { padding: 4px; }
         .laca-cf-hint { margin: 4px 0 0; font-size: 12px; color: #888; }
-        .laca-contact-form-wrap--multistep { max-width: 760px; }
-        .laca-contact-form--multistep { gap: 20px; }
-        .laca-cf-step-progress { display: grid; gap: 14px; margin-bottom: 4px; }
-        .laca-cf-step-progress__track { background: #e5e7eb; border-radius: 999px; height: 6px; overflow: hidden; }
-        .laca-cf-step-progress__fill { background: var(--cf-primary, var(--primary-color, #2271b1)); border-radius: inherit; height: 100%; transition: width .2s ease; }
-        .laca-cf-step-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); list-style: none; margin: 0; padding: 0; }
-        .laca-cf-step-dot { align-items: center; color: #64748b; display: flex; font-size: 12px; font-weight: 600; gap: 8px; min-width: 0; }
-        .laca-cf-step-dot span { align-items: center; background: #f8fafc; border: 1px solid #dbe3ef; border-radius: 999px; display: inline-flex; height: 24px; justify-content: center; width: 24px; }
-        .laca-cf-step-dot strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .laca-cf-step-dot.is-active { color: var(--cf-primary, var(--primary-color, #2271b1)); }
-        .laca-cf-step-dot.is-active span,
-        .laca-cf-step-dot.is-done span { background: var(--cf-primary, var(--primary-color, #2271b1)); border-color: var(--cf-primary, var(--primary-color, #2271b1)); color: #fff; }
-        .laca-cf-step-panel { animation: laca-cf-step-in .18s ease; display: flex; flex-direction: column; gap: 16px; }
-        @keyframes laca-cf-step-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .laca-cf-step-notice { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; color: #991b1b; margin: 0; padding: 10px 12px; }
-        .laca-cf-step-actions { align-items: center; display: flex; gap: 10px; justify-content: flex-end; }
-        .laca-cf-step-btn { border-radius: var(--cf-btn-radius, 6px); cursor: pointer; font-size: 15px; font-weight: 600; padding: 11px 22px; }
-        .laca-cf-step-btn--prev { background: #fff; border: 1px solid #d1d5db; color: #374151; margin-right: auto; }
-        .laca-cf-step-btn--next { background: var(--cf-primary, var(--primary-color, #2271b1)); border: 0; color: #fff; }
-        .laca-cf-step-btn--next:hover,
-        .laca-cf-step-btn--submit:hover { background: var(--cf-secondary, var(--secondary-color, #1a5a9e)); }
         /* Submit row */
         .laca-cf-submit-row { flex-direction: row; align-items: center; justify-content: flex-end; }
         .laca-cf-submit-btn {
@@ -1237,21 +580,11 @@ class ContactFormAjaxHandler
             transform-origin: center;
         }
         /* Fallback message (no Swal) */
-        .laca-cf-fallback-msg {
-            margin-top: 12px; padding: 12px 14px; border-radius: 8px; font-size: 14px;
-            border: 1px solid transparent;
-        }
-        .laca-cf-fallback-msg:not([hidden]) { display: block; }
-        .laca-cf-fallback-msg--success { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
-        .laca-cf-fallback-msg--error { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+        .laca-cf-fallback-msg { display: none; margin-top: 10px; padding: 10px 14px; border-radius: 6px; font-size: 14px; }
+        .laca-cf-fallback-msg--success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .laca-cf-error { color: #d9534f; font-style: italic; }
         </style>
         <?php
-    }
-
-    private static function getCspNonceAttribute(): string
-    {
-        return defined('LACA_CSP_NONCE') ? ' nonce="' . esc_attr(LACA_CSP_NONCE) . '"' : '';
     }
 
     // =========================================================================
@@ -1262,7 +595,7 @@ class ContactFormAjaxHandler
      * Extract a flat list of field objects from a form row.
      * Handles both old flat format and new row-based format.
      */
-    public static function extractFlatFields(array $form): array
+    private static function extractFlatFields(array $form): array
     {
         $raw = json_decode($form['fields'] ?? '[]', true) ?: [];
         if (empty($raw)) {
@@ -1270,194 +603,18 @@ class ContactFormAjaxHandler
         }
         // Old flat format: first item has 'type' and no 'cols'
         if (isset($raw[0]['type']) && !isset($raw[0]['cols'])) {
-            return array_values(array_filter($raw, fn($field) => ($field['type'] ?? '') !== 'step_break'));
+            return $raw;
         }
         // New row-based format
         $fields = [];
         foreach ($raw as $row) {
             foreach ($row['cols'] ?? [] as $col) {
                 foreach ($col['fields'] ?? [] as $field) {
-                    if (($field['type'] ?? '') === 'step_break') {
-                        continue;
-                    }
                     $fields[] = $field;
                 }
             }
         }
         return $fields;
-    }
-
-    private static function shouldRenderMultiStep(array $rawData, array $styleSettings): bool
-    {
-        if (($styleSettings['form_mode'] ?? 'standard') === 'multi_step') {
-            return true;
-        }
-
-        foreach (self::flattenRawFields($rawData) as $field) {
-            if (($field['type'] ?? '') === 'step_break') {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static function flattenRawFields(array $rawData): array
-    {
-        if (isset($rawData[0]['type']) && !isset($rawData[0]['cols'])) {
-            return $rawData;
-        }
-
-        $fields = [];
-        foreach ($rawData as $row) {
-            foreach ($row['cols'] ?? [] as $col) {
-                foreach ($col['fields'] ?? [] as $field) {
-                    $fields[] = $field;
-                }
-            }
-        }
-
-        return $fields;
-    }
-
-    private static function splitRowsIntoSteps(array $rawData): array
-    {
-        $rows = isset($rawData[0]['cols'])
-            ? $rawData
-            : array_map(fn($field) => [
-                'id' => $field['id'] ?? uniqid('row_', true),
-                'cols' => [[
-                    'id' => uniqid('col_', true),
-                    'span' => 12,
-                    'fields' => [$field],
-                ]],
-            ], $rawData);
-
-        $steps = [];
-        $currentRows = [];
-        $currentLabel = 'Bước 1';
-
-        foreach ($rows as $row) {
-            $marker = self::getStepMarker($row);
-            if ($marker !== null) {
-                if (!empty($currentRows)) {
-                    $steps[] = [
-                        'label' => $currentLabel,
-                        'rows' => $currentRows,
-                    ];
-                    $currentRows = [];
-                }
-
-                $fallback = 'Bước ' . (count($steps) + 2);
-                $currentLabel = trim((string) ($marker['label'] ?? '')) ?: $fallback;
-
-                $rowWithoutMarkers = self::stripStepMarkersFromRow($row);
-                if (self::rowHasRenderableFields($rowWithoutMarkers)) {
-                    $currentRows[] = $rowWithoutMarkers;
-                }
-
-                continue;
-            }
-
-            if (self::rowHasRenderableFields($row)) {
-                $currentRows[] = $row;
-            }
-        }
-
-        if (!empty($currentRows) || $steps === []) {
-            $steps[] = [
-                'label' => $currentLabel,
-                'rows' => $currentRows,
-            ];
-        }
-
-        return $steps;
-    }
-
-    private static function getStepMarker(array $row): ?array
-    {
-        foreach ($row['cols'] ?? [] as $col) {
-            foreach ($col['fields'] ?? [] as $field) {
-                if (($field['type'] ?? '') === 'step_break') {
-                    return $field;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private static function stripStepMarkersFromRow(array $row): array
-    {
-        foreach ($row['cols'] ?? [] as $colIndex => $col) {
-            $row['cols'][$colIndex]['fields'] = array_values(array_filter(
-                $col['fields'] ?? [],
-                fn($field) => ($field['type'] ?? '') !== 'step_break'
-            ));
-        }
-
-        return $row;
-    }
-
-    private static function rowHasRenderableFields(array $row): bool
-    {
-        foreach ($row['cols'] ?? [] as $col) {
-            foreach ($col['fields'] ?? [] as $field) {
-                if (($field['type'] ?? '') !== 'step_break') {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static function buildConditionAttributes(array $field): string
-    {
-        $condition = $field['condition'] ?? [];
-        if (empty($condition['field'])) {
-            return '';
-        }
-
-        $operator = $condition['operator'] ?? 'equals';
-        if (!in_array($operator, ['equals', 'not_equals', 'contains', 'not_empty', 'empty'], true)) {
-            $operator = 'equals';
-        }
-
-        return sprintf(
-            ' data-condition-field="%s" data-condition-operator="%s" data-condition-value="%s"',
-            esc_attr($condition['field']),
-            esc_attr($operator),
-            esc_attr($condition['value'] ?? '')
-        );
-    }
-
-    private static function isFieldConditionMatched(array $field, array $source): bool
-    {
-        $condition = $field['condition'] ?? [];
-        if (empty($condition['field'])) {
-            return true;
-        }
-
-        $operator = $condition['operator'] ?? 'equals';
-        $expected = (string) ($condition['value'] ?? '');
-        $actual = $source[$condition['field']] ?? '';
-
-        if (is_array($actual)) {
-            $actualValues = array_map('strval', $actual);
-            $actualString = implode(', ', $actualValues);
-        } else {
-            $actualValues = [(string) $actual];
-            $actualString = (string) $actual;
-        }
-
-        return match ($operator) {
-            'not_equals' => !in_array($expected, $actualValues, true),
-            'contains' => $expected !== '' && str_contains($actualString, $expected),
-            'not_empty' => trim($actualString) !== '',
-            'empty' => trim($actualString) === '',
-            default => in_array($expected, $actualValues, true),
-        };
     }
 
     // =========================================================================
@@ -1476,7 +633,7 @@ class ContactFormAjaxHandler
         return match ($type) {
             'email'  => sanitize_email($value),
             'url'    => esc_url_raw($value),
-            'number' => sanitize_text_field($value),
+            'number' => is_numeric($value) ? $value : '',
             'date', 'datetime' => sanitize_text_field($value),
             'textarea' => sanitize_textarea_field($value),
             'select', 'radio' => in_array($value, $field['options'] ?? [], true) ? sanitize_text_field($value) : '',
@@ -1486,26 +643,14 @@ class ContactFormAjaxHandler
 
     private static function validateFormat(string $type, mixed $value, string $label): string
     {
-        $hasValue = trim((string) $value) !== '';
-
-        if ($type === 'email' && $hasValue && !is_email($value)) {
+        if ($type === 'email' && !empty($value) && !is_email($value)) {
             return $label . ': Địa chỉ email không hợp lệ.';
         }
-        if ($type === 'url' && $hasValue && !filter_var($value, FILTER_VALIDATE_URL)) {
+        if ($type === 'url' && !empty($value) && !filter_var($value, FILTER_VALIDATE_URL)) {
             return $label . ': Đường dẫn URL không hợp lệ.';
         }
-        if ($type === 'phone' && $hasValue) {
-            $digits = preg_replace('/\D+/', '', (string) $value);
-            if (
-                !preg_match('/^\+?[0-9\s().-]+$/', (string) $value) ||
-                strlen($digits) < 8 ||
-                strlen($digits) > 15
-            ) {
-                return $label . ': Số điện thoại không hợp lệ.';
-            }
-        }
-        if ($type === 'number' && $hasValue && !is_numeric($value)) {
-            return $label . ': Giá trị phải là số hợp lệ.';
+        if ($type === 'phone' && !empty($value) && !preg_match('/^[0-9\s\+\-\(\)]{8,20}$/', $value)) {
+            return $label . ': Số điện thoại không hợp lệ.';
         }
         return '';
     }

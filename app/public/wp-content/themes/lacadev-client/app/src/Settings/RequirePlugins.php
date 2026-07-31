@@ -13,20 +13,20 @@ class RequirePlugins
     public function registerRequirePlugins()
     {
         $plugins = [
-            [
-                'name' => 'Wordfence Security – Firewall, Malware Scan, and Login Security',
-                'slug' => 'wordfence',
-                'required' => true,
-                'force_activation' => true,
-                'force_deactivation' => true,
-            ],
-            [
-                'name' => 'WPS Hide Login',
-                'slug' => 'wps-hide-login',
-                'required' => true,
-                'force_activation' => true,
-                'force_deactivation' => true,
-            ],
+            // [
+            //     'name' => 'Wordfence Security – Firewall, Malware Scan, and Login Security',
+            //     'slug' => 'wordfence',
+            //     'required' => true,
+            //     'force_activation' => true,
+            //     'force_deactivation' => true,
+            // ],
+            // [
+            //     'name' => 'WPS Hide Login',
+            //     'slug' => 'wps-hide-login',
+            //     'required' => true,
+            //     'force_activation' => true,
+            //     'force_deactivation' => true,
+            // ],
         ];
 
         $config = [

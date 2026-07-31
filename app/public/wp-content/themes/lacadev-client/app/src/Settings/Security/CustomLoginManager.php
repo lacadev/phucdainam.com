@@ -32,8 +32,10 @@ class CustomLoginManager
         }
 
         if ($this->enabled) {
-            // Must run at plugins_loaded (priority 99) so rewrite rules are loaded first
-            add_action('plugins_loaded', [$this, 'setupHooks'], 99);
+            // Class này được new() lên từ hook 'init' (xem hooks.php), tức là
+            // đã QUA hook 'plugins_loaded' của request này — add_action vào
+            // 'plugins_loaded' ở đây sẽ không bao giờ được gọi. Gọi trực tiếp.
+            $this->setupHooks();
         }
     }
 

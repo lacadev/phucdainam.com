@@ -5,19 +5,31 @@
 import Swal from 'sweetalert2';
 
 export const initContactPage = () => {
+    console.log('📧 Contact Page: Initializing...');
+    
     try {
         const form = document.getElementById('laca-contact-form');
-        if (!form) return;
+        if (!form) {
+            console.warn('Contact form not found on this page');
+            return;
+        }
 
         // Safety check for themeData
         if (typeof themeData === 'undefined' || !themeData.ajaxurl) {
-            console.error('themeData not found. Contact form cannot function.');
+            console.error('❌ themeData not found. Contact form cannot function.');
             return;
         }
 
         const siteKey = form.getAttribute('data-sitekey') || '';
         const submitBtn = form.querySelector('button[type="submit"]');
         const formStatus = document.querySelector('.contact-form-wrapper .form-status');
+        
+        console.log('✅ Contact form elements initialized:', {
+            hasForm: !!form,
+            hasSiteKey: !!siteKey,
+            hasSubmitBtn: !!submitBtn,
+            hasFormStatus: !!formStatus
+        });
 
         // Helper: Get theme colors
         const getThemeColors = () => ({
@@ -152,6 +164,12 @@ export const initContactPage = () => {
             }
 
             const processSubmit = function(token) {
+                console.log('🔐 reCAPTCHA token received:', {
+                    hasToken: !!token,
+                    tokenLength: token ? token.length : 0,
+                    tokenPreview: token ? token.substring(0, 20) + '...' : 'EMPTY'
+                });
+
                 document.getElementById('recaptcha-response').value = token;
 
                 // Prepare FormData
@@ -160,6 +178,15 @@ export const initContactPage = () => {
                     formData.append('resubmit_confirmed', 'true');
                 }
 
+                // Debug FormData
+                console.log('📤 Sending data:', {
+                    action: formData.get('action'),
+                    hasNonce: !!formData.get('nonce'),
+                    hasToken: !!formData.get('recaptcha_response'),
+                    name: formData.get('name'),
+                    email: formData.get('email')
+                });
+
                 // Send AJAX Request
                 fetch(themeData.ajaxurl, {
                     method: 'POST',
@@ -167,6 +194,8 @@ export const initContactPage = () => {
                 })
                 .then(response => response.json())
                 .then(res => {
+                    console.log('📥 Server response:', res);
+
                     // UI: Stop loading
                     submitBtn.classList.remove('loading');
                     submitBtn.disabled = false;
@@ -187,6 +216,9 @@ export const initContactPage = () => {
                         form.reset();
                         clearAllErrors();
                     } else {
+                        // Error handling
+                        console.error('❌ Submission failed:', res.data);
+
                         if (res.data && res.data.code === 'recently_submitted') {
                             Swal.fire({
                                 title: '⚠ Thông báo',
@@ -209,10 +241,20 @@ export const initContactPage = () => {
                                 }
                             });
                         } else {
-                            const errorMessage = (res.data && res.data.message) || 'Đã có lỗi xảy ra.';
+                            // Build error message with debug info
+                            let errorMessage = res.data.message || 'Đã có lỗi xảy ra.';
+                            let debugInfo = '';
+
+                            if (res.data.debug) {
+                                debugInfo = '\n\n🔍 Debug Info:\n';
+                                for (const [key, value] of Object.entries(res.data.debug)) {
+                                    debugInfo += `${key}: ${JSON.stringify(value)}\n`;
+                                }
+                            }
+
                             Swal.fire({
-                                title: 'Thất bại',
-                                text: errorMessage,
+                                title: '✕ Thất bại',
+                                html: `<p>${errorMessage}</p>${debugInfo ? `<pre style="font-size: 0.8em; text-align: left; background: #f5f5f5; padding: 10px; border-radius: 5px; margin-top: 10px;">${debugInfo}</pre>` : ''}`,
                                 icon: 'error',
                                 confirmButtonText: 'Thử lại',
                                 ...getThemeColors()

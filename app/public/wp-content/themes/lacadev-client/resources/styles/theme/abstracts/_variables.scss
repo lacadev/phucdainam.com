@@ -1,6 +1,12 @@
 // Fonts
 $themeFont: "Quicksand", sans-serif;
 
+// Admin colors
+$primaryColorAd: var(--primary-color-ad);
+$secondaryColorAd: var(--secondary-color-ad);
+$backgroundColorAd: var(--bg-color-ad);
+$textColorAd: var(--text-color-ad);
+
 // Theme colors (dùng trong _general.scss)
 $primaryColor: var(--primary-color);
 $secondColor: var(--second-color);

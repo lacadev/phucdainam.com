@@ -14,12 +14,8 @@ if (! defined('ABSPATH')) {
  * Ẩn các menu thừa không cần thiết cho workflow LacaDev.
  */
 add_action('admin_menu', function () {
-    $hide_comments = get_option('_hide_comment_menu_default') === 'yes';
-    $hide_comments = (bool) apply_filters('lacadev_hide_comments_menu', $hide_comments);
-
-    if ($hide_comments) {
-        remove_menu_page('edit-comments.php');
-    }
+    // Ẩn Comments (thường không dùng)
+    remove_menu_page('edit-comments.php');
 
     // Ẩn Tools mặc định, giữ lại LacaTools custom
     // remove_menu_page('tools.php');
@@ -48,17 +44,11 @@ add_action('admin_bar_menu', function (\WP_Admin_Bar $wp_admin_bar) {
  * Ẩn các items không cần trong admin bar.
  */
 add_action('admin_bar_menu', function (\WP_Admin_Bar $wp_admin_bar) {
-    $hide_comments = get_option('_hide_comment_menu_default') === 'yes';
-    $hide_comments = (bool) apply_filters('lacadev_hide_comments_menu', $hide_comments);
-
     $wp_admin_bar->remove_node('wp-logo');
     $wp_admin_bar->remove_node('customize');
+    $wp_admin_bar->remove_node('comments');
     $wp_admin_bar->remove_node('updates');
     $wp_admin_bar->remove_node('new-content');
-
-    if ($hide_comments) {
-        $wp_admin_bar->remove_node('comments');
-    }
 }, 999);
 
 /**

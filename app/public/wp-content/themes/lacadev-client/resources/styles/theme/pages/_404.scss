@@ -32,7 +32,7 @@
     -webkit-text-fill-color: transparent;
     -webkit-text-stroke: 2px var(--primary-color);
 
-    @include resFont(80, 130);
+    @include resFont(5, 8.125);
 
     @include maxWidth($md) {
       text-align: center;

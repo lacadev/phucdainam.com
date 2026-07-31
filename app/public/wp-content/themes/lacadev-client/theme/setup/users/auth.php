@@ -1,7 +1,6 @@
 <?php
 
 use Overtrue\Socialite\SocialiteManager;
-use App\Contracts\AssetHandles;
 
 add_action('wp_ajax_nopriv_user_login', 'mm_user_login');
 add_action('wp_ajax_user_login', 'mm_user_login');
@@ -34,16 +33,6 @@ function lacadev_get_social_driver_config()
         ],
     ];
 }
-
-function lacadev_is_google_login_enabled(): bool
-{
-    $enabled = function_exists('carbon_get_theme_option')
-        ? carbon_get_theme_option('enable_login_google')
-        : get_option('_enable_login_google', get_option('enable_login_google', false));
-
-    return in_array($enabled, [true, 1, '1', 'yes', 'on'], true);
-}
-
 function mm_user_login()
 {
     if (empty($_POST)) {
@@ -154,11 +143,6 @@ function mm_user_reset_password()
 add_action('wp_ajax_nopriv_google_login', 'googleLogin');
 add_action('wp_ajax_google_login', 'googleLogin');
 function googleLogin() {
-    if (!lacadev_is_google_login_enabled()) {
-        wp_safe_redirect(add_query_arg('google_admin_error', 'disabled', wp_login_url()));
-        exit;
-    }
-
     if (is_user_logged_in()) {
         socialCallbackRedirectUrl();
         die();
@@ -217,11 +201,6 @@ add_action('wp_ajax_google_admin_callback', 'googleAdminCallback');
  * Xử lý callback đăng nhập/đăng ký admin bằng Google
  */
 function googleAdminCallback() {
-    if (!lacadev_is_google_login_enabled()) {
-        wp_safe_redirect(add_query_arg('google_admin_error', 'disabled', wp_login_url()));
-        exit;
-    }
-
     $socialite = new SocialiteManager(lacadev_get_social_driver_config());
     $user = $socialite->driver('google')->user();
 
@@ -260,10 +239,6 @@ function googleAdminCallback() {
  * Thêm nút đăng nhập Google vào trang login
  */
 add_action('login_form', function () {
-    if (!lacadev_is_google_login_enabled()) {
-        return;
-    }
-
     // Lấy URL để bắt đầu quá trình đăng nhập Google
     $google_login_url = admin_url('admin-ajax.php?action=google_login&redirect_to=' . urlencode(admin_url('admin-ajax.php?action=google_admin_callback')));
     ?>
@@ -346,6 +321,6 @@ function mm_inject_login_alert_script() {
                 icon: '" . esc_js($icon) . "'
             }));
         ";
-        wp_add_inline_script(AssetHandles::ADMIN_JS, $script, 'before');
+        wp_add_inline_script('theme-admin-js-bundle', $script, 'before');
     }
 }

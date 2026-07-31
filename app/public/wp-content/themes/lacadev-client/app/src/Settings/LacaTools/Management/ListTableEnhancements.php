@@ -28,10 +28,9 @@ class ListTableEnhancements
      */
     public function addViewsColumn(): void
     {
-        $post_types   = $this->auditService->getDashboardPostTypes();
-        if (!in_array('page', $post_types)) {
-            $post_types[] = 'page';
-        }
+        // Lượt xem chỉ áp dụng cho post/CPT — page không có khái niệm
+        // "bài viết được xem nhiều", nên loại page ra khỏi cột này.
+        $post_types = array_diff($this->auditService->getDashboardPostTypes(), ['page']);
 
         foreach ($post_types as $post_type) {
             add_filter("manage_{$post_type}_posts_columns", function ($columns) {

@@ -8,8 +8,7 @@
  */
 function getImageAsset($path) {
     $my_theme   = wp_get_theme();
-    $theme_name = str_replace('/theme', '', $my_theme->get_stylesheet());
-    $theme_path = str_replace('wp-content/themes/'. $theme_name .'/theme', 'wp-content/themes/' . $theme_name . '/', $my_theme->get_template_directory_uri());
+    $theme_path = dirname(get_stylesheet_directory_uri());
 
     if (carbon_get_theme_option('use_short_url') !== true) {
         $siteUrl = $theme_path . "/resources/images/";

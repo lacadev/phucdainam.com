@@ -82,21 +82,29 @@ class SecurityManager
     {
         $activeTab = sanitize_key($_GET['tab'] ?? 'audit');
         $tabs = [
-            'audit'   => 'Kiểm tra bảo mật',
-            'fim'     => 'Giám sát file',
-            'malware' => 'Quét mã độc',
-            'users'   => 'User ẩn',
-            'login'   => 'URL đăng nhập',
-            '2fa'     => '2FA TOTP',
+            'audit'   => '📊 Kiểm tra bảo mật',
+            'fim'     => '🗂️ Giám sát file',
+            'malware' => '🦠 Quét mã độc',
+            'users'   => '👥 User ẩn',
+            'login'   => '🔑 URL đăng nhập',
+            '2fa'     => '📱 2FA TOTP',
         ];
-
-        if (!isset($tabs[$activeTab])) {
-            $activeTab = 'audit';
-        }
         ?>
         <div class="wrap">
-            <h1><?php echo esc_html($tabs[$activeTab]); ?></h1>
-            <div class="tab-content" style="background:#fff;padding:24px;border:1px solid #dfe3ea;border-radius:10px;margin-top:16px;">
+            <h1>🔒 Bảo mật</h1>
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:14px 16px;margin:8px 0">
+                <p style="margin:0 0 8px;font-weight:600;color:#0369a1">🔧 Bảo mật website</p>
+                <p style="margin:0;font-size:13px;color:#374151">Trang này tập hợp các công cụ giúp bảo vệ site: kiểm tra điểm bảo mật tổng quan, giám sát file bị thay đổi, quét mã độc, phát hiện tài khoản admin ẩn, đổi URL đăng nhập để tránh dò mật khẩu, và bật xác thực 2 bước (2FA) cho tài khoản quản trị.</p>
+            </div>
+            <nav class="nav-tab-wrapper">
+                <?php foreach ($tabs as $key => $label): ?>
+                    <a href="<?php echo esc_url(add_query_arg(['page' => 'laca-security', 'tab' => $key], admin_url('admin.php'))); ?>"
+                       class="nav-tab <?php echo $activeTab === $key ? 'nav-tab-active' : ''; ?>">
+                        <?php echo esc_html($label); ?>
+                    </a>
+                <?php endforeach; ?>
+            </nav>
+            <div class="tab-content" style="background:#fff;padding:24px;border:1px solid #c3c4c7;border-top:0;margin-top:0;">
                 <?php
                 switch ($activeTab) {
                     case 'audit':   $this->renderAuditTab();   break;

@@ -13,6 +13,7 @@ class AdminUxService
     {
         $this->addClientHelpMenu();
         add_action('admin_menu', [$this, 'registerUnattachedMediaMenu']);
+        add_action('admin_notices', [$this, 'renderUnattachedMediaNotice']);
         $this->simplifyMerchantAdmin();
     }
 
@@ -28,6 +29,27 @@ class AdminUxService
             'manage_options',
             'upload.php?detached=1&mode=list'
         );
+    }
+
+    /**
+     * Hiển thị đoạn giải thích ngay trên trang "Media Không Dùng"
+     * (thực chất là thư viện Media lọc theo trạng thái "chưa gắn vào bài viết nào").
+     */
+    public function renderUnattachedMediaNotice(): void
+    {
+        if (empty($_GET['detached']) || !function_exists('get_current_screen')) {
+            return;
+        }
+
+        $screen = get_current_screen();
+        if (!$screen || $screen->id !== 'upload') {
+            return;
+        }
+
+        echo '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:14px 16px;margin:8px 0">'
+            . '<p style="margin:0 0 8px;font-weight:600;color:#0369a1">🔧 Media Không Dùng</p>'
+            . '<p style="margin:0;font-size:13px;color:#374151">Danh sách này liệt kê các file ảnh/video đã tải lên nhưng chưa được gắn vào bài viết, trang hoặc sản phẩm nào. Bạn có thể xoá bớt để giải phóng dung lượng lưu trữ trên site.</p>'
+            . '</div>';
     }
 
     /**
@@ -64,6 +86,10 @@ class AdminUxService
         ?>
 
         <div class="wrap laca-help-wrap">
+            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:14px 16px;margin:8px 0 16px">
+                <p style="margin:0 0 8px;font-weight:600;color:#0369a1">🔧 Trang trợ giúp dành cho bạn</p>
+                <p style="margin:0;font-size:13px;color:#374151">Đây là trang hướng dẫn sử dụng website dành cho khách hàng. Nội dung bên dưới do quản trị viên cấu hình riêng cho từng dự án tại <strong>Laca Admin &gt; Quản trị &amp; HD Sử dụng</strong>.</p>
+            </div>
             <h1 class="laca-help-header">
                 <span>📖</span>
                 <?php echo esc_html($page_title); ?>

@@ -9,31 +9,37 @@ if (!defined('ABSPATH')) {
 /**
  * LacaDev Theme Updater
  *
- * Tự động check phiên bản mới của lacadev-child từ lacadev.com
+ * Tự động check phiên bản mới của theme (cha hoặc con) từ clients.lacadev.com
  * và hiện thông báo update trong WP Admin — giống plugin update.
  *
  * Cách hoạt động:
  *   1. WordPress gọi pre_set_site_transient_update_themes mỗi 12h
- *   2. Class này fetch info.json từ lacadev.com
+ *   2. Class này fetch info.json từ clients.lacadev.com
  *   3. So sánh version → nếu mới hơn, thêm vào queue update của WP
  *   4. Admin thấy thông báo, click "Cập nhật ngay" → WP tự download & cài
  */
 class ThemeUpdater
 {
-    /** Slug của theme (khớp với tên thư mục wp-content/themes/lacadev-client/) */
-    private string $themeSlug = 'lacadev-client';
-
-    /** URL file info.json đặt trên lacadev.com */
-    private string $updateInfoUrl = 'https://lacadev.com/theme-updates/lacadev-client.json';
-
-    /** Cache transient key (tránh gọi API quá nhiều) */
-    private string $cacheKey = 'lacadev_child_update_info';
-
     /** Cache TTL: 6 giờ */
     private int $cacheTtl = 6 * HOUR_IN_SECONDS;
 
-    public function __construct()
-    {
+    /** Cache transient key (tránh gọi API quá nhiều) — động theo từng theme */
+    private string $cacheKey;
+
+    /**
+     * @param string $themeSlug     Slug đầy đủ của theme, PHẢI khớp với "stylesheet"
+     *                              mà WordPress dùng nội bộ — vì theme này dùng cấu
+     *                              trúc lồng cấp (root thật nằm ở thư mục con `theme/`),
+     *                              slug đúng có dạng 'lacadev-client/theme', không phải
+     *                              chỉ 'lacadev-client'.
+     * @param string $updateInfoUrl URL file info.json đặt trên clients.lacadev.com.
+     */
+    public function __construct(
+        private string $themeSlug,
+        private string $updateInfoUrl,
+    ) {
+        $this->cacheKey = 'lacadev_theme_update_' . md5($this->themeSlug);
+
         add_filter('pre_set_site_transient_update_themes', [$this, 'checkForUpdate']);
         add_filter('themes_api', [$this, 'themeInfo'], 10, 3);
         add_action('upgrader_process_complete', [$this, 'clearCache'], 10, 2);
@@ -113,7 +119,7 @@ class ThemeUpdater
     }
 
     /**
-     * Fetch info.json từ lacadev.com, có cache 6h
+     * Fetch info.json từ $updateInfoUrl, có cache 6h
      */
     private function getRemoteInfo(): ?object
     {

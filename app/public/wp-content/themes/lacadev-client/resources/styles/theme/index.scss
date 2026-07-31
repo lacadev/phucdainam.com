@@ -5,9 +5,10 @@
 @use "./base/wordpress.scss" as *;
 
 @use "./components/share-post.scss";
-@use "./components/reading-mode.scss";
-@use "./components/multi-step-form.scss";
 
 @use "./layout/general.scss" as *;
 
 @use "./pages/404.scss" as *;
+
+@import "~@csstools/normalize.css";
+@import "swiper/swiper-bundle.css";

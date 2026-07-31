@@ -14,7 +14,6 @@ return [
     'providers' => [
         \App\Routing\RouteConditionsServiceProvider::class,
         \App\View\ViewServiceProvider::class,
-        \App\Module\ModuleServiceProvider::class,
     ],
 
     'routes'              => [

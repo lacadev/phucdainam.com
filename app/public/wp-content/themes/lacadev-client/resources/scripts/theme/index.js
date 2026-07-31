@@ -1,29 +1,19 @@
 /* eslint-disable no-unused-vars */
 import '@images/favicon.ico';
-import '@csstools/normalize.css';
-import 'swiper/css/bundle';
 import '@styles/tailwind.css'; // Tailwind v3: PostCSS only, no sass-loader
 import '@styles/theme';
 import './pages/*.js';
-import { initSmartSearch } from './ajax-search.js';
+import './ajax-search.js';
 
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Swal from 'sweetalert2';
 
-window.Swal = Swal;
-
-import { initAnimations, animateText, setupGsap404 } from './components/animations.js';
+import {setupGsap404 } from './components/animations.js';
 import { initHeaderScroll, resetHeaderState }           from './components/header.js';
 import { initMobileMenu, closeMobileMenu }             from './components/mobile-menu.js';
-import { initPageLoader, shouldShowLoader }             from './components/loader.js';
 import { initContactPage }                             from './pages/contact.js';
 import { initCommentForm }                             from './pages/comments.js';
-import { initAboutLacaHero }                            from './pages/about-laca.js';
 import { initScrollReveal, initCounters, initRippleEffect } from './micro-interactions.js';
-import { initReadingMode }                                  from './components/reading-mode.js';
-import { initMultiStepForms }                              from './components/multi-step-form.js';
-import { initContactFormMultiSteps }                        from './components/contact-form-multistep.js';
 
 gsap.registerPlugin( ScrollTrigger );
 
@@ -78,8 +68,4 @@ document.addEventListener( 'DOMContentLoaded', () => {
 	initPageLoader( isMobile );
 	resetHeaderState();
 	closeMobileMenu();
-	initReadingMode();
-	initSmartSearch();
-	initMultiStepForms();
-	initContactFormMultiSteps();
 } );

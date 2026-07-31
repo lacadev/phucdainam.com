@@ -1,36 +1,34 @@
-@use "sass:math";
 @use "./variables.scss" as *;
 
 @function rem($px) {
-  @return #{math.div($px, 16)}rem;
+  @return #{$px / 16}rem;
 }
 
-// Responsive font-size: $min-size and $max-size are pixel amounts (unitless, e.g. 10 = 10px), output as rem via rem().
 @mixin resFont($min-size, $max-size, $important: false) {
-  $font-size: rem($max-size);
-  // Midpoint between min and max (same math as max - (max - min) / 2), expressed in rem for calc().
-  $font-size-mid: calc((#{rem($min-size)} + #{rem($max-size)}) / 2);
+  $font-size: #{$max-size};
   & {
     font-size: $font-size;
     @if $important {
-      font-size: rem($max-size) !important;
+      font-size: #{$max-size} !important;
     }
   }
 
   @include maxWidth($lg) {
+    $font-size: calc(#{$max-size} - ((#{$max-size} - #{$min-size})) / 2);
     & {
-      font-size: $font-size-mid;
+      font-size: $font-size;
       @if $important {
-        font-size: $font-size-mid !important;
+        font-size: calc(#{$max-size} - ((#{$max-size} - #{$min-size})) / 2) !important;
       }
     }
   }
 
   @include maxWidth($sm) {
+    $font-size: #{$min-size};
     & {
-      font-size: rem($min-size);
+      font-size: $font-size;
       @if $important {
-        font-size: rem($min-size) !important;
+        font-size: #{$min-size} !important;
       }
     }
   }
@@ -48,9 +46,9 @@
   }
 }
 
-@mixin aspectRatio($ratio: math.div(16, 9)) {
+@mixin aspectRatio($ratio: 16/9) {
   height: 0;
-  padding-bottom: math.div(100%, $ratio);
+  padding-bottom: 100% / $ratio;
 
   @supports (aspect-ratio: 16/9) {
     aspect-ratio: $ratio;
@@ -86,4 +84,13 @@
   -moz-hyphens: auto;
   -webkit-hyphens: auto;
   hyphens: auto;
+}
+
+@mixin delay($rule, $number, $value) {
+  @for $i from 1 to ($number + 1) {
+    &:nth-child(#{$i}) {
+      -webkit-#{$rule}-delay: (#{$i * $value});
+      #{$rule}-delay: (#{$i * $value});
+    }
+  }
 }

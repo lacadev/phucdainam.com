@@ -24,7 +24,7 @@ body {
   &.overflow-hidden {
     overflow: hidden;
   }
-  @include resFont(16, 20, true);
+  @include resFont(1, 1.25, true);
 }
 
 ::-webkit-scrollbar {

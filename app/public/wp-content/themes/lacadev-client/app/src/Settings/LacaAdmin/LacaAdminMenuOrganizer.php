@@ -3,10 +3,12 @@
 namespace App\Settings\LacaAdmin;
 
 /**
- * Groups Laca Admin pages into a compact internal dock.
+ * Keeps the Laca Admin submenu grouped in one predictable order.
  *
- * Customer sites should not receive the full internal Laca Projects CRM, but the
- * admin tools still need a predictable, low-noise navigation surface.
+ * Individual modules still own their page callbacks and capabilities. This
+ * class only reorganizes the final WordPress submenu array after all pages are
+ * registered, then renders an internal Laca Admin dock. Existing URLs and
+ * callbacks remain unchanged.
  */
 class LacaAdminMenuOrganizer
 {
@@ -48,36 +50,6 @@ class LacaAdminMenuOrganizer
     ];
 
     /**
-     * @var array<string,array{label:string,tab:string}>
-     */
-    private const THEME_SETTINGS_TABS = [
-        'laca-theme-settings-general' => [
-            'label' => 'Tổng quan',
-            'tab' => 'general',
-        ],
-        'laca-theme-settings-cta' => [
-            'label' => 'Sticky CTA',
-            'tab' => 'cta',
-        ],
-        'laca-theme-settings-author' => [
-            'label' => 'Author Profile',
-            'tab' => 'author',
-        ],
-        'laca-theme-settings-performance' => [
-            'label' => 'Performance',
-            'tab' => 'performance',
-        ],
-        'laca-theme-settings-search' => [
-            'label' => 'Smart Search',
-            'tab' => 'search',
-        ],
-        'laca-theme-settings-system' => [
-            'label' => 'System Info',
-            'tab' => 'system',
-        ],
-    ];
-
-    /**
      * @var array<string,array{label:string,icon:string,items:string[]}>
      */
     private const GROUPS = [
@@ -86,26 +58,7 @@ class LacaAdminMenuOrganizer
             'icon' => 'dashicons-admin-generic',
             'items' => [
                 'laca-admin',
-            ],
-        ],
-        'management_help' => [
-            'label' => 'Quản trị & HD Sử dụng',
-            'icon' => 'dashicons-welcome-learn-more',
-            'items' => [
-                'laca-management-dashboard-widgets',
-                'laca-help-content-settings',
-            ],
-        ],
-        'theme_settings' => [
-            'label' => 'Theme Settings',
-            'icon' => 'dashicons-admin-appearance',
-            'items' => [
-                'laca-theme-settings-general',
-                'laca-theme-settings-cta',
-                'laca-theme-settings-author',
-                'laca-theme-settings-performance',
-                'laca-theme-settings-search',
-                'laca-theme-settings-system',
+                'laca-management-settings',
             ],
         ],
         'maintenance' => [
@@ -139,13 +92,19 @@ class LacaAdminMenuOrganizer
                 'laca-contact-forms',
             ],
         ],
-        'client_ops' => [
-            'label' => 'Kết nối & vận hành',
-            'icon' => 'dashicons-admin-site-alt3',
+        'sync' => [
+            'label' => 'Kết nối LacaDev',
+            'icon' => 'dashicons-networking',
             'items' => [
-                'laca-client-ops',
-                'laca-tracker',
                 'laca-block-sync',
+                'lacadev-block-categories',
+                'laca-tracker',
+            ],
+        ],
+        'projects' => [
+            'label' => 'Dự án & thông báo',
+            'icon' => 'dashicons-portfolio',
+            'items' => [
                 'laca-project-notifications',
             ],
         ],
@@ -184,21 +143,13 @@ class LacaAdminMenuOrganizer
 
         foreach ($submenu[self::PARENT_SLUG] as $item) {
             $slug = (string) ($item[2] ?? '');
+
             if ($slug === '') {
                 continue;
             }
 
             $itemsBySlug[$slug] = $item;
             $unassigned[$slug] = $item;
-        }
-
-        if (current_user_can('edit_theme_options') || current_user_can('manage_options')) {
-            $itemsBySlug['lacadev-control-center'] = [
-                __('Theme Settings', 'laca'),
-                'read',
-                'lacadev-control-center',
-            ];
-            $unassigned['lacadev-control-center'] = $itemsBySlug['lacadev-control-center'];
         }
 
         $organized = [];
@@ -208,15 +159,6 @@ class LacaAdminMenuOrganizer
             $groupItems = [];
 
             foreach ($group['items'] as $slug) {
-                if (isset(self::THEME_SETTINGS_TABS[$slug])) {
-                    if (!isset($itemsBySlug['lacadev-control-center'])) {
-                        continue;
-                    }
-
-                    $groupItems[] = $this->buildNavigationItemFromSlug($slug);
-                    continue;
-                }
-
                 if (isset(self::SECURITY_TABS[$slug])) {
                     if (!isset($itemsBySlug['laca-security'])) {
                         continue;
@@ -248,11 +190,6 @@ class LacaAdminMenuOrganizer
         if (isset($itemsBySlug['laca-security'])) {
             $organized[] = $itemsBySlug['laca-security'];
             unset($unassigned['laca-security']);
-        }
-
-        if (isset($itemsBySlug['lacadev-control-center'])) {
-            $organized[] = $itemsBySlug['lacadev-control-center'];
-            unset($unassigned['lacadev-control-center']);
         }
 
         if ($unassigned !== []) {
@@ -303,30 +240,10 @@ class LacaAdminMenuOrganizer
             ];
         }
 
-        if (isset(self::THEME_SETTINGS_TABS[$slug])) {
-            $tab = self::THEME_SETTINGS_TABS[$slug]['tab'];
-
-            return [
-                'label' => self::THEME_SETTINGS_TABS[$slug]['label'],
-                'slug' => $slug,
-                'url' => add_query_arg(
-                    [
-                        'page' => 'lacadev-control-center',
-                        'tab' => $tab,
-                    ],
-                    admin_url('themes.php')
-                ),
-            ];
-        }
-
-        $url = $slug === 'lacadev-control-center'
-            ? admin_url('themes.php?page=' . rawurlencode($slug))
-            : admin_url('admin.php?page=' . rawurlencode($slug));
-
         return [
-            'label' => ($label !== null && $label !== '') ? $label : $slug,
+            'label' => ($label !== null && $label !== '') ? $label : $this->getFallbackItemLabel($slug),
             'slug' => $slug,
-            'url' => $url,
+            'url' => add_query_arg('page', $slug, admin_url('admin.php')),
         ];
     }
 
@@ -347,23 +264,26 @@ class LacaAdminMenuOrganizer
                 display: none !important;
             }
 
-            body.laca-admin-dock-active:not(.folded) #wpcontent,
+            body.laca-admin-dock-active:not(.folded) #wpcontent {
+                padding-left: 304px;
+            }
+
             body.laca-admin-dock-active.folded #wpcontent {
-                padding-left: 332px;
+                padding-left: 304px;
             }
 
             .laca-admin-dock {
-                background: #ffffff;
-                border-right: 1px solid #dbe1ea;
+                background: #fff;
+                border-right: 1px solid #e5e7eb;
                 bottom: 0;
-                box-shadow: 12px 0 36px rgba(15, 23, 42, 0.08);
-                color: #0f172a;
+                box-shadow: 10px 0 24px rgba(15, 23, 42, .06);
+                color: #1f2937;
                 left: 160px;
                 overflow-y: auto;
-                padding: 24px 18px 30px;
+                padding: 18px 12px;
                 position: fixed;
                 top: 32px;
-                width: 316px;
+                width: 276px;
                 z-index: 99;
             }
 
@@ -372,80 +292,82 @@ class LacaAdminMenuOrganizer
             }
 
             .laca-admin-dock__group {
-                border-top: 1px solid #e7ecf3;
+                border-top: 1px solid #f1f3f5;
                 margin-bottom: 0;
-                padding: 18px 2px 0;
-                margin-top: 18px;
+                padding: 20px 4px;
             }
 
             .laca-admin-dock__group:first-of-type {
                 border-top: 0;
                 padding-top: 0;
-                margin-top: 0;
             }
 
             .laca-admin-dock__group-title {
                 align-items: center;
-                color: #64748b;
+                color: #6b7280;
                 display: flex;
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: 700;
-                letter-spacing: 0.04em;
+                gap: 0;
+                letter-spacing: 0;
                 line-height: 1.35;
-                margin: 0 0 10px;
-                text-transform: uppercase;
+                margin: 0 0 6px;
             }
 
-            .laca-admin-dock__group-title .dashicons,
+            .laca-admin-dock__group-title .dashicons {
+                display: none;
+            }
+
             .laca-admin-dock__group-count {
                 display: none;
             }
 
             .laca-admin-dock__items {
                 display: grid;
-                gap: 6px;
+                gap: 4px;
+                margin: 0;
             }
 
             .laca-admin-dock__item {
                 border: 1px solid transparent;
-                border-radius: 14px;
-                color: #334155;
+                border-radius: 6px;
+                color: #374151;
                 display: block;
                 font-size: 13px;
-                font-weight: 600;
-                line-height: 1.4;
-                padding: 11px 14px;
-                position: relative;
+                line-height: 1.35;
+                padding: 7px 10px;
                 text-decoration: none;
-                transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+                transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+            }
+
+            .laca-admin-dock__item::before {
+                content: none;
             }
 
             .laca-admin-dock__item:hover,
             .laca-admin-dock__item:focus {
-                background: #ffffff;
-                border-color: #dbe1ea;
-                color: #0f172a;
+                background: #f8fafc;
+                border-color: #e5e7eb;
+                color: #111827;
                 outline: none;
-                box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
             }
 
             .laca-admin-dock__item.is-active {
-                background: rgba(37, 99, 235, 0.07);
-                border-color: rgba(37, 99, 235, 0.16);
-                color: #0f172a;
+                background: #f3f4f6;
+                border-color: #d1d5db;
+                box-shadow: none;
+                color: #111827;
                 font-weight: 700;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
             }
 
             .laca-admin-dock__item.is-active::before {
-                background: #2563eb;
-                border-radius: 999px;
-                bottom: 10px;
-                content: "";
-                left: 8px;
-                position: absolute;
-                top: 10px;
-                width: 3px;
+                content: none;
+            }
+
+            @media (max-width: 960px) {
+                body.auto-fold .laca-admin-dock {
+                    left: 36px;
+                }
             }
 
             @media (max-width: 782px) {
@@ -456,17 +378,18 @@ class LacaAdminMenuOrganizer
                 }
 
                 .laca-admin-dock {
-                    border: 1px solid #dbe1ea;
-                    border-radius: 16px;
+                    border-radius: 10px;
                     bottom: auto;
                     left: auto;
                     margin: 12px 10px 18px;
+                    max-height: none;
                     position: relative;
                     top: auto;
                     width: auto;
                 }
 
-                body.folded .laca-admin-dock {
+                body.folded .laca-admin-dock,
+                body.auto-fold .laca-admin-dock {
                     left: auto;
                 }
             }
@@ -476,25 +399,32 @@ class LacaAdminMenuOrganizer
 
     public function renderNavigationDock(): void
     {
-        if (!$this->isLacaAdminRequest() || $this->navigationGroups === []) {
+        if (!$this->isLacaAdminRequest()) {
             return;
         }
 
-        $currentSlug = $this->getCurrentPageSlug();
+        $groups = $this->getNavigationGroups();
+        if ($groups === []) {
+            return;
+        }
+
+        $currentPage = $this->getCurrentPageSlug();
         ?>
         <nav class="laca-admin-dock" aria-label="<?php echo esc_attr__('Laca Admin', 'laca'); ?>">
-            <?php foreach ($this->navigationGroups as $group): ?>
-                <section class="laca-admin-dock__group">
-                    <h2 class="laca-admin-dock__group-title">
+            <?php foreach ($groups as $group): ?>
+                <section class="laca-admin-dock__group" aria-labelledby="laca-admin-dock-group-<?php echo esc_attr($group['key']); ?>">
+                    <h2 class="laca-admin-dock__group-title" id="laca-admin-dock-group-<?php echo esc_attr($group['key']); ?>">
                         <span class="dashicons <?php echo esc_attr($group['icon']); ?>" aria-hidden="true"></span>
                         <span><?php echo esc_html($group['label']); ?></span>
                         <span class="laca-admin-dock__group-count"><?php echo esc_html((string) count($group['items'])); ?></span>
                     </h2>
                     <div class="laca-admin-dock__items">
                         <?php foreach ($group['items'] as $item): ?>
-                            <a class="laca-admin-dock__item<?php echo $currentSlug === $item['slug'] ? ' is-active' : ''; ?>"
-                               href="<?php echo esc_url($item['url']); ?>"
-                               <?php echo $currentSlug === $item['slug'] ? 'aria-current="page"' : ''; ?>>
+                            <a
+                                class="laca-admin-dock__item<?php echo $currentPage === $item['slug'] ? ' is-active' : ''; ?>"
+                                href="<?php echo esc_url($item['url']); ?>"
+                                <?php echo $currentPage === $item['slug'] ? 'aria-current="page"' : ''; ?>
+                            >
                                 <?php echo esc_html($item['label']); ?>
                             </a>
                         <?php endforeach; ?>
@@ -505,27 +435,85 @@ class LacaAdminMenuOrganizer
         <?php
     }
 
+    /**
+     * @return array<int,array{key:string,label:string,icon:string,items:array<int,array{label:string,slug:string,url:string}>}>
+     */
+    private function getNavigationGroups(): array
+    {
+        if ($this->navigationGroups !== []) {
+            return $this->navigationGroups;
+        }
+
+        $groups = [];
+        foreach (self::GROUPS as $groupKey => $group) {
+            $items = [];
+
+            foreach ($group['items'] as $slug) {
+                $items[] = $this->buildNavigationItemFromSlug($slug);
+            }
+
+            $groups[] = [
+                'key' => $groupKey,
+                'label' => $group['label'],
+                'icon' => $group['icon'],
+                'items' => $items,
+            ];
+        }
+
+        return $groups;
+    }
+
+    private function getFallbackItemLabel(string $slug): string
+    {
+        $labels = [
+            'laca-admin' => 'Laca Admin',
+            'laca-management-settings' => 'Quản trị & HD Sử dụng',
+            'laca-tools' => 'Tools',
+            'laca-db-cleaner' => 'Dọn dẹp DB',
+            'laca-email-log' => 'Email Log',
+            'laca-security' => 'Bảo mật',
+            'laca-security-audit' => 'Kiểm tra bảo mật',
+            'laca-security-fim' => 'Giám sát file',
+            'laca-security-malware' => 'Quét mã độc',
+            'laca-security-users' => 'User ẩn',
+            'laca-security-login' => 'URL đăng nhập',
+            'laca-security-2fa' => '2FA TOTP',
+            'laca-recaptcha' => 'Google reCAPTCHA',
+            'laca-login-socials' => 'Login Socials',
+            'laca-dynamic-cpt' => 'Custom Post Types',
+            'laca-contact-forms' => 'Form Liên Hệ',
+            'laca-block-sync' => '🧩 LacaDev',
+            'lacadev-block-categories' => 'Block Categories',
+            'laca-tracker' => '📡 Tracker',
+            'laca-project-notifications' => 'LacaDev PM & Bots',
+            'laca-exit-popup' => 'Exit Popup',
+            'laca-chatbot' => 'Chatbot',
+        ];
+
+        return $labels[$slug] ?? $slug;
+    }
+
     private function isLacaAdminRequest(): bool
     {
-        return $this->getCurrentPageSlug() !== ''
-            && $this->isKnownLacaAdminSlug($this->getCurrentPageSlug());
+        $currentPage = $this->getCurrentPageSlug();
+        if ($currentPage === '') {
+            return false;
+        }
+
+        foreach ($this->getNavigationGroups() as $group) {
+            foreach ($group['items'] as $item) {
+                if ($item['slug'] === $currentPage) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function getCurrentPageSlug(): string
     {
         $page = sanitize_key(wp_unslash($_GET['page'] ?? ''));
-
-        if ($page === 'lacadev-control-center') {
-            $tab = sanitize_key(wp_unslash($_GET['tab'] ?? 'general'));
-
-            foreach (self::THEME_SETTINGS_TABS as $slug => $config) {
-                if ($config['tab'] === $tab) {
-                    return $slug;
-                }
-            }
-
-            return 'laca-theme-settings-general';
-        }
 
         if ($page !== 'laca-security') {
             return $page;
@@ -540,31 +528,5 @@ class LacaAdminMenuOrganizer
         }
 
         return 'laca-security-audit';
-    }
-
-    private function isKnownLacaAdminSlug(string $slug): bool
-    {
-        if ($slug === self::PARENT_SLUG) {
-            return true;
-        }
-
-        foreach (self::GROUPS as $group) {
-            if (in_array($slug, $group['items'], true)) {
-                return true;
-            }
-        }
-
-        if (isset(self::THEME_SETTINGS_TABS[$slug])) {
-            return true;
-        }
-
-        global $submenu;
-        foreach (($submenu[self::PARENT_SLUG] ?? []) as $item) {
-            if ((string) ($item[2] ?? '') === $slug) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

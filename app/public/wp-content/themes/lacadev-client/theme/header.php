@@ -11,7 +11,14 @@ if (!defined('ABSPATH')) {
  * @package WPEmergeTheme
  */
 ?>
+
 <!DOCTYPE html>
 <html <?php language_attributes(); ?> data-theme="light">
-<head> <?php wp_head(); ?></head>
-<body <?php body_class(); ?>><div class="wrapper"><div></div>
+
+<head>
+	<?php wp_head(); ?>
+</head>
+
+<body <?php body_class(); ?>>
+	<div class="wrapper">
+        <div>

@@ -46,7 +46,6 @@ if (!class_exists(\App\Settings\LacaTools\ManagementExperience::class)) {
         $mgmtDir . '/DashboardWidgets.php',
         $mgmtDir . '/ListTableEnhancements.php',
         $mgmtDir . '/AdminUxService.php',
-        $mgmtDir . '/ClientOperationsPage.php',
         $parentLacaTools . '/AIChatHandler.php',
         $parentLacaTools . '/AITranslationParser.php',
         $parentLacaTools . '/AITranslationHandler.php',
@@ -60,14 +59,6 @@ if (!class_exists(\App\Settings\LacaTools\ManagementExperience::class)) {
     }
 }
 new \App\Settings\LacaTools\ManagementExperience();
-new \App\Features\SmartSearch\SmartSearchEndpoint();
-(new \App\Features\ContactForm\MultiStepFormHandler())->init();
-(new \App\Features\ContextAwareCta())->init();
-(new \App\Features\AuthorTrustProfile())->init();
-(new \App\Features\RecommendationEngine())->init();
-(new \App\Settings\ThemeControlCenter())->init();
-(new \App\Features\EditorialWorkflow())->init();
-(new \App\Features\RoleBasedAdminUx())->init();
 
 // phpcs:disable
 /**

@@ -19,7 +19,6 @@ class BlockSyncReceiver
     private const KEY_OPTION  = 'laca_sync_key';
     private const LOG_OPTION  = 'laca_block_activity_log';
     private const INST_OPTION = 'laca_blocks_installed';
-    private const DIAG_OPTION = 'laca_block_sync_diagnostics';
 
     public function __construct()
     {
@@ -56,7 +55,7 @@ class BlockSyncReceiver
         }
 
         // --- Validate payload ---
-        $blockName = sanitize_key($request->get_param('block_name') ?? '');
+        $blockName = self::sanitizeBlockRelativePath((string) ($request->get_param('block_name') ?? ''));
         $version   = sanitize_text_field($request->get_param('version') ?? '1.0.0');
         $files     = $request->get_param('files') ?? [];
 
@@ -77,33 +76,12 @@ class BlockSyncReceiver
 
         // Xác định đây là install mới hay update
         $installed = get_option(self::INST_OPTION, []);
-        if (!is_array($installed)) {
-            $installed = [];
-        }
-        $oldVersion = isset($installed[$blockName]) && !is_array($installed[$blockName]) ? (string) $installed[$blockName] : null;
+        $oldVersion = $installed[$blockName] ?? null;
         $isUpdate   = $oldVersion !== null;
-        $syncedBy = sanitize_text_field((string) ($request->get_param('synced_by') ?: $request->get_header('X-Laca-User') ?: 'lacadev'));
-        $diagnostics = $this->diagnoseIncomingBlock($blockName, $version, $files, $oldVersion, $syncedBy);
-
-        if (!empty($diagnostics['errors'])) {
-            $this->appendLog(
-                'Không nhận <strong>' . esc_html($blockName) . '</strong>: ' . esc_html(implode(' ', $diagnostics['errors'])),
-                $diagnostics
-            );
-            $this->saveDiagnostics($blockName, $diagnostics);
-
-            return new \WP_REST_Response([
-                'success' => false,
-                'message' => 'Block payload không đạt preflight.',
-                'diagnostics' => $diagnostics,
-            ], 400);
-        }
 
         try {
             $this->writeBlockFiles($blockDir, $files);
         } catch (\Exception $e) {
-            $diagnostics['errors'][] = $e->getMessage();
-            $this->saveDiagnostics($blockName, $diagnostics);
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'Lỗi ghi file: ' . $e->getMessage(),
@@ -120,19 +98,13 @@ class BlockSyncReceiver
         } else {
             $logMsg = "✅ Nhận <strong>{$blockName}</strong> ({$version})";
         }
-        $postWriteDiagnostics = $this->diagnoseInstalledBlock($blockDir, $diagnostics);
-        $this->saveDiagnostics($blockName, $postWriteDiagnostics);
-        $this->appendLog($logMsg, $postWriteDiagnostics);
-
-        // --- Fire webhook action so child themes / plugins can react ---
-        do_action('lacadev/block-sync/received', $blockName, $version, $isUpdate);
+        $this->appendLog($logMsg);
 
         return new \WP_REST_Response([
             'success' => true,
             'message' => $isUpdate
                 ? "Đã cập nhật {$blockName} từ {$oldVersion} lên {$version}"
                 : "Đã nhận {$blockName} v{$version} thành công",
-            'diagnostics' => $postWriteDiagnostics,
         ], 200);
     }
 
@@ -142,11 +114,21 @@ class BlockSyncReceiver
             return new \WP_REST_Response(['success' => false, 'message' => 'API Key không hợp lệ.'], 401);
         }
 
-        return new \WP_REST_Response([
+        $response = [
             'success'   => true,
             'installed' => get_option(self::INST_OPTION, []),
-            'diagnostics' => get_option(self::DIAG_OPTION, []),
-        ], 200);
+        ];
+
+        // Nếu hub hỏi kèm ?block=xxx, trả thêm checksum nội dung hiện tại của
+        // block đó trên đĩa — dùng để hub phát hiện site khách đã tự sửa file
+        // trước khi ghi đè (xem BlockSyncSender::detectConflict() phía hub).
+        $blockName = self::sanitizeBlockRelativePath((string) ($request->get_param('block') ?? ''));
+        if (!empty($blockName)) {
+            $blockDir = dirname(get_stylesheet_directory()) . '/block-gutenberg/' . $blockName;
+            $response['checksum'] = is_dir($blockDir) ? $this->computeChecksum($blockDir) : null;
+        }
+
+        return new \WP_REST_Response($response, 200);
     }
 
     // =========================================================================
@@ -166,6 +148,22 @@ class BlockSyncReceiver
     }
 
     /**
+     * Làm sạch "block relative path" — tên block phẳng (không "/") hoặc
+     * "{bucket}/{block}" (đúng 1 dấu "/"). Dùng thay cho sanitize_key() vì
+     * sanitize_key() xoá sạch dấu "/" và sẽ phá path có bucket.
+     */
+    private static function sanitizeBlockRelativePath(string $raw): string
+    {
+        $raw = strtolower(trim($raw));
+        $segments = array_filter(explode('/', $raw), static fn ($s) => $s !== '');
+        $segments = array_map(static fn ($s) => preg_replace('/[^a-z0-9_-]/', '', $s), $segments);
+        $segments = array_filter($segments, static fn ($s) => $s !== '' && $s !== '.' && $s !== '..');
+        $segments = array_slice($segments, 0, 2);
+
+        return implode('/', $segments);
+    }
+
+    /**
      * Giải mã base64 và ghi files vào block directory.
      * $files = ['relative/path' => 'base64_encoded_content']
      *
@@ -180,6 +178,17 @@ class BlockSyncReceiver
         if ($realStyleDir === false) {
             // Thư mục chưa tồn tại - sẽ được tạo khi ghi file đầu tiên
             $realStyleDir = $childBlockGutenberg;
+        }
+
+        // Xóa sạch thư mục block CŨ (nếu có) trước khi ghi bản mới. Nếu
+        // không làm vậy, file bị xóa/đổi tên giữa các phiên bản (vd refactor
+        // block) sẽ nằm lại trên đĩa mãi mãi — khiến checksum tính từ disk
+        // (getStatus()) không bao giờ khớp với checksum hub lưu từ đúng
+        // payload vừa push, gây báo nhầm "site khách đã tự sửa" ở lần push
+        // kế tiếp dù khách không hề đụng vào file nào.
+        $realBlockDir = realpath($blockDir);
+        if ($realBlockDir !== false && str_starts_with($realBlockDir, (string) $realStyleDir)) {
+            $this->deleteDirectoryContents($realBlockDir);
         }
 
         foreach ($files as $relativePath => $base64Content) {
@@ -216,114 +225,80 @@ class BlockSyncReceiver
     }
 
     /**
+     * Tính checksum nội dung hiện tại của 1 block trên đĩa — md5 của toàn bộ
+     * md5(file) theo từng path tương đối, đã sắp xếp để thứ tự đọc thư mục
+     * không ảnh hưởng kết quả. Phải cùng thuật toán với
+     * BlockSyncSender::computeChecksumFromFiles() phía hub (hash trên nội
+     * dung đã giải mã base64) để 2 bên so sánh được trực tiếp.
+     */
+    private function computeChecksum(string $blockDir): string
+    {
+        $hashes   = [];
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($blockDir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $file) {
+            /** @var \SplFileInfo $file */
+            if (!$file->isFile()) {
+                continue;
+            }
+            $relPath = ltrim(str_replace($blockDir, '', $file->getPathname()), '/');
+            $hash    = md5_file($file->getPathname());
+            if ($hash !== false) {
+                $hashes[$relPath] = $hash;
+            }
+        }
+
+        ksort($hashes);
+
+        return md5((string) wp_json_encode($hashes));
+    }
+
+    /**
+     * Xóa toàn bộ nội dung 1 thư mục (đệ quy) nhưng giữ lại thư mục gốc.
+     * Chỉ gọi sau khi đã xác nhận $dir nằm trong phạm vi an toàn
+     * block-gutenberg/ của child theme (xem writeBlockFiles()).
+     */
+    private function deleteDirectoryContents(string $dir): void
+    {
+        $items = scandir($dir);
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $path = $dir . '/' . $item;
+            if (is_dir($path)) {
+                $this->deleteDirectoryContents($path);
+                @rmdir($path);
+            } else {
+                @unlink($path);
+            }
+        }
+    }
+
+    /**
      * Ghi entry vào activity log (giữ tối đa 50 entries gần nhất).
      */
-    private function appendLog(string $message, array $context = []): void
+    private function appendLog(string $message): void
     {
         $log = get_option(self::LOG_OPTION, []);
 
         array_unshift($log, [
             'time'    => current_time('mysql'),
             'message' => $message,
-            'context' => $context,
         ]);
 
-        // Giữ tối đa 200 entries
-        $log = array_slice($log, 0, 200);
+        // Giữ tối đa 50 entries
+        $log = array_slice($log, 0, 50);
 
         update_option(self::LOG_OPTION, $log, false);
-    }
-
-    private function diagnoseIncomingBlock(string $blockName, string $version, array $files, ?string $oldVersion, string $syncedBy): array
-    {
-        $fileNames = array_map('strval', array_keys($files));
-        $warnings = [];
-        $errors = [];
-
-        if (!in_array('block.json', $fileNames, true)) {
-            $errors[] = 'Thiếu block.json nên block sẽ không thể đăng ký.';
-        } else {
-            $rawBlockJson = base64_decode((string) $files['block.json'], true);
-            $metadata = $rawBlockJson ? json_decode($rawBlockJson, true) : null;
-            if (!is_array($metadata)) {
-                $errors[] = 'block.json không phải JSON hợp lệ.';
-            } elseif (empty($metadata['name'])) {
-                $warnings[] = 'block.json thiếu trường name.';
-            }
-        }
-
-        if (!in_array('index.js', $fileNames, true) && !in_array('build/index.js', $fileNames, true)) {
-            $warnings[] = 'Không thấy index.js hoặc build/index.js.';
-        }
-
-        if (!in_array('render.php', $fileNames, true) && !in_array('save.js', $fileNames, true)) {
-            $warnings[] = 'Không thấy render.php hoặc save.js.';
-        }
-
-        foreach ($fileNames as $fileName) {
-            if (str_contains($fileName, '..')) {
-                $errors[] = 'Payload có path traversal: ' . $fileName;
-            }
-        }
-
-        return [
-            'block_name' => $blockName,
-            'old_version' => $oldVersion,
-            'new_version' => $version,
-            'version_changed' => $oldVersion === null || version_compare($version, $oldVersion, '!='),
-            'file_count' => count($files),
-            'files' => $fileNames,
-            'warnings' => array_values(array_unique($warnings)),
-            'errors' => array_values(array_unique($errors)),
-            'synced_by' => $syncedBy,
-            'synced_at' => current_time('mysql'),
-            'target_dir' => dirname(get_stylesheet_directory()) . '/block-gutenberg/' . $blockName,
-            'compatibility' => $this->getCompatibilitySnapshot(),
-        ];
-    }
-
-    private function diagnoseInstalledBlock(string $blockDir, array $diagnostics): array
-    {
-        $diagnostics['installed_files'] = [];
-        $diagnostics['missing_after_write'] = [];
-
-        foreach ((array) ($diagnostics['files'] ?? []) as $relativePath) {
-            $fullPath = $blockDir . '/' . ltrim((string) $relativePath, '/');
-            if (file_exists($fullPath)) {
-                $diagnostics['installed_files'][] = (string) $relativePath;
-            } else {
-                $diagnostics['missing_after_write'][] = (string) $relativePath;
-            }
-        }
-
-        if (!empty($diagnostics['missing_after_write'])) {
-            $diagnostics['warnings'][] = 'Một số file không được ghi sau sync.';
-            $diagnostics['warnings'] = array_values(array_unique((array) $diagnostics['warnings']));
-        }
-
-        return $diagnostics;
-    }
-
-    private function saveDiagnostics(string $blockName, array $diagnostics): void
-    {
-        $all = get_option(self::DIAG_OPTION, []);
-        if (!is_array($all)) {
-            $all = [];
-        }
-
-        $all[$blockName] = $diagnostics;
-        update_option(self::DIAG_OPTION, $all, false);
-    }
-
-    private function getCompatibilitySnapshot(): array
-    {
-        return [
-            'wp_version' => get_bloginfo('version'),
-            'php_version' => PHP_VERSION,
-            'parent_theme' => get_template(),
-            'child_theme' => get_stylesheet(),
-            'uses_child_block_dir' => get_stylesheet_directory() !== get_template_directory(),
-        ];
     }
 
     // =========================================================================
@@ -338,12 +313,5 @@ class BlockSyncReceiver
             update_option(self::KEY_OPTION, $key);
         }
         return $key;
-    }
-
-    public static function getDiagnostics(): array
-    {
-        $diagnostics = get_option(self::DIAG_OPTION, []);
-
-        return is_array($diagnostics) ? $diagnostics : [];
     }
 }
