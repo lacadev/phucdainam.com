@@ -6,8 +6,8 @@ import {
 	TextControl,
 	PanelBody,
 } from '@wordpress/components';
-import { BlockBasePanels } from '../utils/inspector-panels';
-import { useInserterPreview, BlockPreviewMock } from '../utils/preview';
+import { BlockBasePanels } from '../../utils/inspector-panels';
+import { useInserterPreview, BlockPreviewMock } from '../../utils/preview';
 import ServerSideRender from '@wordpress/server-side-render';
 
 export default function Edit( { attributes, setAttributes } ) {

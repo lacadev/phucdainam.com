@@ -201,16 +201,8 @@ function init() {
 	}
 }
 
-let hookedBarba = false;
-
 function bootstrap() {
 	init();
-	setTimeout(() => {
-		if (window.barba && !hookedBarba) {
-			hookedBarba = true;
-			window.barba.hooks.after(() => init());
-		}
-	}, 0);
 }
 
 if (document.readyState === 'loading') {

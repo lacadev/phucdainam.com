@@ -15,7 +15,7 @@ import {
 	RangeControl,
 } from '@wordpress/components';
 import ServerSideRender from '@wordpress/server-side-render';
-import { useInserterPreview, BlockPreviewMock } from '../utils/preview';
+import { useInserterPreview, BlockPreviewMock } from '../../utils/preview';
 
 const LAYOUT_OPTIONS = [
 	{ label: 'Ảnh lớn trái + grid phải', value: 'left-main-right-grid' },

@@ -46,7 +46,7 @@ function getPagedFromLink( link ) {
 }
 
 /**
- * Align history URL with WP pretty permalinks (/archive/page/N/) so Barba/layout stay correct.
+ * Align history URL with WP pretty permalinks (/archive/page/N/) so layout stays correct.
  */
 function buildArchiveBrowserUrl( archiveUrl, queryParam, catSlug, paged, prettyPaged ) {
 	const url = new URL( archiveUrl, window.location.origin );
@@ -180,7 +180,7 @@ function updatePage( { gridEl, paginationEl, filterEl, html, pagination, activeL
 }
 
 /**
- * Main init — chạy khi DOM ready và sau mỗi Barba navigation.
+ * Main init — chạy khi DOM ready.
  */
 function init() {
 	const root = document.querySelector( ROOT_SELECTOR );
@@ -292,16 +292,8 @@ function init() {
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
-let _barbaHooked = false;
-
 function bootstrap() {
 	init();
-	setTimeout( () => {
-		if ( window.barba && ! _barbaHooked ) {
-			_barbaHooked = true;
-			window.barba.hooks.after( () => init() );
-		}
-	}, 0 );
 }
 
 if ( document.readyState === 'loading' ) {

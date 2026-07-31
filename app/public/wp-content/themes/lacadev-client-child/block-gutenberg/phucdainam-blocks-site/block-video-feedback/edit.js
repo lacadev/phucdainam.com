@@ -13,8 +13,8 @@ import {
 	RangeControl,
 	ColorPicker,
 } from '@wordpress/components';
-import { useInserterPreview, BlockPreviewMock } from '../utils/preview';
-import { hexToRgba } from '../utils/style';
+import { useInserterPreview, BlockPreviewMock } from '../../utils/preview';
+import { hexToRgba } from '../../utils/style';
 
 /**
  * Trích YouTube ID từ nhiều dạng URL.

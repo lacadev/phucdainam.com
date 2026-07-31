@@ -31,7 +31,7 @@ function getPagedFromLink(link) {
 }
 
 /**
- * Match WordPress front URL: /archive/page/N/ when permalinks are enabled (avoids ?paged= breaking Barba/CSS).
+ * Match WordPress front URL: /archive/page/N/ when permalinks are enabled (avoids ?paged= breaking CSS).
  */
 function buildArchiveBrowserUrl(archiveUrl, queryParam, catSlug, paged, prettyPaged) {
 	const url = new URL(archiveUrl, window.location.origin);
@@ -239,16 +239,8 @@ function init() {
 	}
 }
 
-let hookedBarba = false;
-
 function bootstrap() {
 	init();
-	setTimeout(() => {
-		if (window.barba && !hookedBarba) {
-			hookedBarba = true;
-			window.barba.hooks.after(() => init());
-		}
-	}, 0);
 }
 
 if (document.readyState === 'loading') {

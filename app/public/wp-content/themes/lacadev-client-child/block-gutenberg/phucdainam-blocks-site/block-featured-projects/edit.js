@@ -14,7 +14,7 @@ import {
 } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import ServerSideRender from '@wordpress/server-side-render';
-import { useInserterPreview, BlockPreviewMock } from '../utils/preview';
+import { useInserterPreview, BlockPreviewMock } from '../../utils/preview';
 
 export default function Edit( { attributes, setAttributes } ) {
 	const isPreview = useInserterPreview( attributes );

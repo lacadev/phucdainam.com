@@ -65,29 +65,50 @@ function patchSassLoader(config) {
 }
 
 // === Scan Child-specific blocks ===
-const childBlocksDir = path.resolve(__dirname, '../../block-gutenberg');
-let childBlockConfigs = [];
+// Hỗ trợ 2 cấp: block nằm phẳng ngay dưới root (chưa phân loại site) HOẶC
+// nằm trong 1 thư mục "bucket" theo site (vd phucdainam-blocks-site/) — 1
+// thư mục có block.json ngay trong nó = 1 block, không có = 1 bucket, quét
+// thêm 1 cấp con để tìm block bên trong (không hỗ trợ lồng sâu hơn).
+function scanBlockRelativePaths(rootDir) {
+  if (!fs.existsSync(rootDir)) return [];
 
-if (fs.existsSync(childBlocksDir)) {
-  const blocks = fs.readdirSync(childBlocksDir).filter(dir => {
-    return fs.statSync(path.join(childBlocksDir, dir)).isDirectory() && fs.existsSync(path.join(childBlocksDir, dir, 'block.json'));
-  });
+  const relativePaths = [];
 
-  childBlockConfigs = blocks.map(block => {
-    const config = patchSassLoader({
-      ...defaultConfig,
-      entry: {
-        index: path.join(childBlocksDir, block, 'index.js')
-      },
-      output: {
-        ...defaultConfig.output,
-        path: path.join(childBlocksDir, block, 'build'),
-        filename: '[name].js'
+  fs.readdirSync(rootDir).forEach(entry => {
+    const entryPath = path.join(rootDir, entry);
+    if (!fs.statSync(entryPath).isDirectory()) return;
+
+    if (fs.existsSync(path.join(entryPath, 'block.json'))) {
+      relativePaths.push(entry);
+      return;
+    }
+
+    fs.readdirSync(entryPath).forEach(subEntry => {
+      const subEntryPath = path.join(entryPath, subEntry);
+      if (fs.statSync(subEntryPath).isDirectory() && fs.existsSync(path.join(subEntryPath, 'block.json'))) {
+        relativePaths.push(path.join(entry, subEntry));
       }
     });
-    return config;
   });
+
+  return relativePaths;
 }
+
+const childBlocksDir = path.resolve(__dirname, '../../block-gutenberg');
+
+const childBlockConfigs = scanBlockRelativePaths(childBlocksDir).map(relPath => {
+  return patchSassLoader({
+    ...defaultConfig,
+    entry: {
+      index: path.join(childBlocksDir, relPath, 'index.js')
+    },
+    output: {
+      ...defaultConfig.output,
+      path: path.join(childBlocksDir, relPath, 'build'),
+      filename: '[name].js'
+    }
+  });
+});
 
 // === Global Gutenberg bundle: Parent theme → dist/gutenberg/ của Child ===
 const parentBlocksDir = path.resolve(__dirname, '../../../lacadev-client/block-gutenberg');
