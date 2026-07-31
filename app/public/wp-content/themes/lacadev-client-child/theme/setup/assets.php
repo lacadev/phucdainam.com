@@ -71,11 +71,11 @@ function child_enqueue_frontend_assets()
         );
     }
     // Stats Counter Block animation script — enqueue trực tiếp
-    $sc_js = get_stylesheet_directory() . '/block-gutenberg/block-stats-counter/stats-counter.js';
+    $sc_js = get_stylesheet_directory() . '/block-gutenberg/phucdainam-blocks-site/block-stats-counter/stats-counter.js';
     if ( file_exists( $sc_js ) ) {
         wp_enqueue_script(
             'block-stats-counter-js',
-            get_stylesheet_directory_uri() . '/block-gutenberg/block-stats-counter/stats-counter.js',
+            get_stylesheet_directory_uri() . '/block-gutenberg/phucdainam-blocks-site/block-stats-counter/stats-counter.js',
             [],
             filemtime( $sc_js ),
             true
@@ -102,3 +102,23 @@ function child_enqueue_admin_assets()
     }
 }
 add_action('admin_enqueue_scripts', 'child_enqueue_admin_assets', 20);
+
+/**
+ * Fix favicon ở trang quản trị/đăng nhập.
+ *
+ * Assets::addFavicon() (vendor htmlburger/wpemerge-theme-core, hook vào
+ * wp_head/login_head/admin_head) lấy URL qua getAssetUri('images/favicon.ico'),
+ * mà getAssetUri() luôn đọc manifest.json từ APP_DIST_DIR — hằng số này
+ * cứng vào thư mục dist/ của PARENT theme (lacadev-client/dist/). Nhưng dự
+ * án build asset bằng webpack của CHILD theme, xuất ra
+ * lacadev-client-child/dist/ — nên manifest.json phía parent không tồn tại,
+ * getAssetUri() trả về '', href rỗng, browser hiện icon mặc định.
+ *
+ * Front-end không bị ảnh hưởng vì header.php lấy favicon qua theAsset(),
+ * trỏ thẳng resources/images/ chứ không qua dist/manifest.json. Filter
+ * `app_favicon_uri` được chừa sẵn đúng để ghi đè trường hợp này — trỏ thẳng
+ * về file favicon.ico thật (đang dùng cho front-end) thay vì qua manifest.
+ */
+add_filter('app_favicon_uri', function () {
+    return dirname(get_stylesheet_directory_uri()) . '/resources/images/favicon/favicon.ico';
+});
