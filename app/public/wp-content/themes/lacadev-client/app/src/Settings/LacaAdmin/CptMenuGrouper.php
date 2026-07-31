@@ -16,7 +16,8 @@ namespace App\Settings\LacaAdmin;
  * rác. Đọc thẳng từ global $menu sau khi mọi menu đã đăng ký xong (hook
  * admin_menu, priority PHP_INT_MAX chạy cuối cùng) để biết chính xác "Laca
  * Theme" đang ở vị trí nào — không cần đoán/tính trước — rồi di chuyển toàn
- * bộ CPT top-level tới ngay sau đó.
+ * bộ CPT top-level tới ngay sau đó, có chèn thêm 1 dòng phân cách
+ * (wp-menu-separator) ở giữa để tách biệt "Laca Theme" với khối CPT.
  */
 class CptMenuGrouper
 {
@@ -76,6 +77,10 @@ class CptMenuGrouper
         if (empty($moved)) {
             return;
         }
+
+        // Chèn 1 dòng phân cách (giống style mặc định của WP core) ngay sau
+        // "Laca Theme", trước khối CPT, để tách biệt trực quan 2 nhóm menu.
+        $menu[(string) ((float) $anchorKey + 0.00005)] = ['', 'read', 'laca-theme-separator', '', 'wp-menu-separator'];
 
         // Giữ đúng thứ tự get_post_types() trả về (theo tên CPT, alphabet) để
         // vị trí luôn ổn định giữa các lần load trang.

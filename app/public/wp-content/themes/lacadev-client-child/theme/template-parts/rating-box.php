@@ -7,7 +7,9 @@
     <div class="rating-box__body">
         <p class="rating-cta"><?php _e('Đánh giá bài viết', 'laca'); ?></p>
         <div class="rating-stars">
-            <?php echo kk_star_ratings(); ?>
+            <?php if (function_exists('kk_star_ratings')) : ?>
+                <?php echo kk_star_ratings(); ?>
+            <?php endif; ?>
         </div>
     </div>
 </div>

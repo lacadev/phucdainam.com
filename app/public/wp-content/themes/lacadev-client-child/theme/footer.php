@@ -217,7 +217,7 @@ $footer_contact_image_alt = $footer_contact_image_id ? get_post_meta($footer_con
                 if (!empty($addr['address'])):
                   ?>
                   <li class="footer__contact-item">
-                      <?php echo nl2br(esc_html($addr['address'])); ?>
+                    <?php echo nl2br(esc_html($addr['address'])); ?>
                     </span>
                   </li>
                 <?php endif; ?>
@@ -276,7 +276,6 @@ $footer_contact_image_alt = $footer_contact_image_id ? get_post_meta($footer_con
 </footer>
 <!-- footer end -->
 
-</div><!-- barba container end -->
 </div>
 <!-- container-wrapper end -->
 

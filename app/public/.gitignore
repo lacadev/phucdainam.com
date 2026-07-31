@@ -2,7 +2,9 @@
 /wp-includes/
 /wp-content/uploads/
 /wp-content/upgrade/
-/wp-content/cache/
+/wp-content/*cache*/
+/wp-content/advanced-cache.php
+/wp-content/object-cache.php
 /wp-content/languages/
 /wp-content/wflogs/
 /wp-content/liteSpeed/

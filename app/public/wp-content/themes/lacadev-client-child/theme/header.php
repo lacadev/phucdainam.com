@@ -294,8 +294,7 @@ if (!defined('ABSPATH')) {
 							if ($logo_url):
 								?>
 								<a href="<?php echo esc_url(home_url('/')); ?>" class="header__logo-link">
-									<img src="<?php echo esc_url($logo_url); ?>"
-										class="header__logo-img"
+									<img src="<?php echo esc_url($logo_url); ?>" class="header__logo-img"
 										alt="<?php echo esc_attr(get_bloginfo('name')); ?>">
 								</a>
 							<?php endif; ?>
@@ -312,8 +311,7 @@ if (!defined('ABSPATH')) {
 
 						<!-- Hamburger (mobile) -->
 						<div class="header__hamburger" id="btn-hamburger"
-							aria-label="<?php esc_attr_e('Mở menu', 'laca'); ?>"
-							role="button" tabindex="0"
+							aria-label="<?php esc_attr_e('Mở menu', 'laca'); ?>" role="button" tabindex="0"
 							aria-expanded="false" aria-controls="header-overlay">
 							<span></span>
 							<span></span>
@@ -347,4 +345,3 @@ if (!defined('ABSPATH')) {
 				</div>
 			</header>
 		<?php endif; ?>
-		<div data-barba="container" data-barba-namespace="default">
