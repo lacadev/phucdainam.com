@@ -11,11 +11,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # block-gutenberg/**/build (JS/CSS đã compile của từng block) bị
+      # dist/ (CSS/JS/fonts/images đã compile của theme) và
+      # block-gutenberg/**/build (JS/CSS đã compile của từng block) đều bị
       # .gitignore loại khỏi git (xem lacadev-client-child/.gitignore) —
-      # KHÔNG tồn tại trong checkout ở trên, nên PHẢI build lại ở đây trước
-      # khi FTP, nếu không site khách sẽ nhận được source block.json/edit.js
-      # nhưng thiếu hẳn build/, khiến block không hiện trong trình soạn thảo.
+      # KHÔNG tồn tại trong checkout ở trên, nên PHẢI build lại cả 2 ở đây
+      # trước khi FTP. Trước đây chỉ build blocks, thiếu build:theme khiến
+      # dist/ trên server là bản cache thủ công cũ, dẫn tới font/asset 404
+      # mỗi khi source (font, ảnh...) thay đổi mà không ai tự tay upload lại.
+      # Bỏ qua bước critical CSS (yarn critical) vì nó cần fetch từ 1 URL
+      # WordPress đang chạy thật (config.json trỏ *.local) — không tồn tại
+      # trên CI runner, sẽ luôn fail nếu chạy ở đây.
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
@@ -28,6 +33,10 @@ jobs:
       - name: Install Node dependencies
         working-directory: app/public/wp-content/themes/lacadev-client-child
         run: yarn install --frozen-lockfile
+
+      - name: Build theme assets (dist/ — CSS/JS/fonts/images)
+        working-directory: app/public/wp-content/themes/lacadev-client-child
+        run: yarn build:theme
 
       - name: Build Gutenberg blocks (block-gutenberg/**/build)
         working-directory: app/public/wp-content/themes/lacadev-client-child
