@@ -48,7 +48,6 @@ jobs:
           # Chỉ deploy 2 thư mục quan trọng (đường dẫn tính từ local-dir ở trên)
           include: |
             wp-content/themes/**
-            wp-content/plugins/**
 
           # Loại trừ những thứ không cần
           # Quan trọng: exclude mới thực sự chặn xoá trên server (include chỉ ưu tiên
