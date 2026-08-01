@@ -2,23 +2,22 @@ name: Theme CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
-
-defaults:
-  run:
-    working-directory: app/public/wp-content/themes/lacadev
+    branches: [main, master]
 
 jobs:
-  build:
-    name: Build & Test
+  build-parent:
+    name: Build & Validate (lacadev-client)
     runs-on: ubuntu-latest
-    
+
+    defaults:
+      run:
+        working-directory: app/public/wp-content/themes/lacadev-client
+
     strategy:
       matrix:
-        node-version: [20.x]
-        php-version: ['8.1']
+        php-version: ["8.1"]
 
     steps:
       - uses: actions/checkout@v4
@@ -37,27 +36,44 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('app/public/wp-content/themes/lacadev/composer.json') }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('app/public/wp-content/themes/lacadev-client/composer.json') }}
           restore-keys: |
             ${{ runner.os }}-composer-
 
       - name: Install Composer Dependencies
         run: composer install --prefer-dist --no-progress
 
+      - name: Validate composer.json
+        run: composer validate --no-check-publish
+
+  build-child:
+    name: Build & Lint (lacadev-client-child)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: app/public/wp-content/themes/lacadev-client-child
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Install Node Dependencies
-        run: yarn install --frozen-lockfile
-
       - name: Create config.json from dist
         run: cp config.json.dist config.json
 
+      - name: Install Node Dependencies
+        run: yarn install --frozen-lockfile
+
       - name: Run Build
-        run: yarn build:theme && yarn build:blocks
-        
-      # Note: The 'lint' script in package.json calls 'lint:wpcs' etc.
+        run: yarn build
+
       - name: Run Lint
         run: yarn lint
