@@ -32,5 +32,4 @@ ehthumbs.db
 Thumbs.db
 .idea
 composer.lock
-yarn.lock
 package-lock.json
