@@ -75,8 +75,12 @@ if ( $mode === 'manual' && ! empty( $selected_posts ) ) {
 $query = new WP_Query( $query_args );
 
 // ── Unique ID per instance ─────────────────────────────────────────────────
-static $instance = 0;
-$instance++;
+// `static` ở top-level file bị include qua closure ẩn danh (cách WP core
+// require render.php) KHÔNG giữ giá trị giữa các lần render — mỗi block
+// instance lại reset về 1, gây trùng ID khi block này xuất hiện ≥ 2 lần
+// trên cùng 1 trang. wp_unique_id() dùng static bên trong hàm core thật
+// sự nên luôn tăng đúng, bất kể include theo cách nào.
+$instance  = wp_unique_id();
 $swiper_id = 'projects-slider-' . $instance;
 
 $section_extra_attrs = 'class="block-projects-slider" style="background:' . esc_attr( $bg_rgba ) . ';"';
