@@ -19,20 +19,6 @@ import { useInserterPreview, BlockPreviewMock } from '../../utils/preview';
 
 export default function Edit( { attributes, setAttributes } ) {
 	const isPreview = useInserterPreview( attributes );
-	if ( isPreview ) {
-		return (
-			<BlockPreviewMock
-				kicker={
-					attributes.sectionBadge || __( 'Dự Án Tiêu Biểu', 'laca' )
-				}
-				title={
-					attributes.sectionTitle ||
-					__( 'Dự Án Sử Dụng Sản Phẩm', 'laca' )
-				}
-				columns={ 3 }
-			/>
-		);
-	}
 
 	// ── Local state ──────────────────────────────────────────────────────────
 	const [ postSearch, setPostSearch ] = useState( '' );
@@ -184,6 +170,21 @@ export default function Edit( { attributes, setAttributes } ) {
 	useEffect( () => {
 		setAttributes( { selectedTerms: [], taxonomy: '' } );
 	}, [ postType ] );
+
+	if ( isPreview ) {
+		return (
+			<BlockPreviewMock
+				kicker={
+					attributes.sectionBadge || __( 'Dự Án Tiêu Biểu', 'laca' )
+				}
+				title={
+					attributes.sectionTitle ||
+					__( 'Dự Án Sử Dụng Sản Phẩm', 'laca' )
+				}
+				columns={ 3 }
+			/>
+		);
+	}
 
 	// ── Posts hiển thị trên canvas ──────────────────────────────────────────
 	// Khi manual: dùng selectedPostsData (fetch theo ID) → đảm bảo đúng bài và có thumbnail
@@ -716,7 +717,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					) }
 				</PanelBody>
 			</InspectorControls>
-			<div { ...useBlockProps() }>
+			<div { ...blockProps }>
 				<ServerSideRender
 					block="lacadev/projects-slider-block"
 					attributes={ attributes }

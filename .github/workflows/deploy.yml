@@ -60,8 +60,7 @@ jobs:
             .cpanel.yml
             .gitignore
             wp-content/themes/**/node_modules/**
-            wp-content/plugins/
-            wp-content/plugins/**/node_modules/**
+            wp-content/plugins/**
             wp-content/uploads/**
             wp-admin/**
             wp-includes/**

@@ -9,4 +9,3 @@
 // AI Translation Plugin — dùng addFilter('editor.BlockEdit') để thêm
 // panel "✨ Dịch bằng AI" vào sidebar của tất cả blocks.
 import './ai-translate-plugin';
-

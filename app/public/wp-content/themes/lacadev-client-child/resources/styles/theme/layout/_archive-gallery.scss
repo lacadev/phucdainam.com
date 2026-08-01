@@ -19,13 +19,6 @@
 	justify-content: space-between;
 	margin-bottom: 3.2rem;
 
-	@include maxWidth($md) {
-		flex-wrap: wrap;
-		gap: 1.6rem;
-		justify-content: center;
-		margin-bottom: 1.6rem;
-	}
-
 	&__title-page {
 		font-size: rem(30);
 		font-weight: $semiBold;
@@ -35,6 +28,13 @@
 		@include maxWidth($md) {
 			font-size: rem(24);
 		}
+	}
+
+	@include maxWidth($md) {
+		flex-wrap: wrap;
+		gap: 1.6rem;
+		justify-content: center;
+		margin-bottom: 1.6rem;
 	}
 }
 
@@ -164,16 +164,6 @@
 	position: relative;
 	transition: opacity 0.25s ease;
 
-	@include maxWidth($lg) {
-		grid-template-columns: repeat(2, 1fr);
-		gap: 2rem;
-	}
-
-	@include maxWidth($sm) {
-		grid-template-columns: 1fr;
-		gap: 1.6rem;
-	}
-
 	&.is-loading {
 		opacity: 0.45;
 		pointer-events: none;
@@ -186,6 +176,16 @@
 			background: rgba(0, 0, 0, 0.2);
 			backdrop-filter: blur(2px);
 		}
+	}
+
+	@include maxWidth($lg) {
+		grid-template-columns: repeat(2, 1fr);
+		gap: 2rem;
+	}
+
+	@include maxWidth($sm) {
+		grid-template-columns: 1fr;
+		gap: 1.6rem;
 	}
 }
 

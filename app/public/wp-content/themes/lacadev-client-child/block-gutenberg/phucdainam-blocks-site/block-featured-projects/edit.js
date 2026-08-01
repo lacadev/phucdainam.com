@@ -18,17 +18,6 @@ import { useInserterPreview, BlockPreviewMock } from '../../utils/preview';
 
 export default function Edit( { attributes, setAttributes } ) {
 	const isPreview = useInserterPreview( attributes );
-	if ( isPreview ) {
-		return (
-			<BlockPreviewMock
-				kicker={ __( 'Featured Projects', 'laca' ) }
-				title={
-					attributes.sectionTitle || __( 'Dự án nổi bật', 'laca' )
-				}
-				columns={ 3 }
-			/>
-		);
-	}
 
 	const {
 		sectionTitle,
@@ -88,6 +77,20 @@ export default function Edit( { attributes, setAttributes } ) {
 		},
 		[ mode, postType, postsCount, orderBy ]
 	);
+
+	const innerBlockProps = useBlockProps();
+
+	if ( isPreview ) {
+		return (
+			<BlockPreviewMock
+				kicker={ __( 'Featured Projects', 'laca' ) }
+				title={
+					attributes.sectionTitle || __( 'Dự án nổi bật', 'laca' )
+				}
+				columns={ 3 }
+			/>
+		);
+	}
 
 	const postsToShow =
 		mode === 'manual'
@@ -316,7 +319,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					/>
 				</PanelBody>
 			</InspectorControls>
-			<div { ...useBlockProps() }>
+			<div { ...innerBlockProps }>
 				<ServerSideRender
 					block="lacadev/featured-projects-block"
 					attributes={ attributes }

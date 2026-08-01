@@ -46,11 +46,6 @@
     padding: 0 2.4rem;
     flex-shrink: 0;
 
-    @include maxWidth($lg) {
-      justify-content: flex-start;
-      padding: 0;
-    }
-
     &-link {
       display: flex;
       align-items: center;
@@ -60,6 +55,11 @@
       width: auto;
       max-height: 3rem;
       object-fit: contain;
+    }
+
+    @include maxWidth($lg) {
+      justify-content: flex-start;
+      padding: 0;
     }
   }
 
@@ -318,10 +318,6 @@
     cursor: pointer;
     margin-left: auto;
 
-    @include maxWidth($lg) {
-      display: flex;
-    }
-
     span {
       display: block;
       width: 2.4rem;
@@ -351,6 +347,10 @@
         transform: rotate(45deg) translate(0.2rem, 0.1rem);
         width: 2.4rem;
       }
+    }
+
+    @include maxWidth($lg) {
+      display: flex;
     }
   }
 }

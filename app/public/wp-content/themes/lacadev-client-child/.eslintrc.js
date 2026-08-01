@@ -20,11 +20,14 @@ module.exports = {
 		// Browser globals
 		localStorage: 'readonly',
 		location: 'readonly',
+		history: 'readonly',
 		navigator: 'readonly',
+		DOMParser: 'readonly',
 		MutationObserver: 'readonly',
 		IntersectionObserver: 'readonly',
 		IntersectionObserverEntry: 'readonly',
 		requestIdleCallback: 'readonly',
+		requestAnimationFrame: 'readonly',
 		MouseEvent: 'readonly',
 
 		// Service Worker globals

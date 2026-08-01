@@ -21,20 +21,6 @@
 		position: relative;
 		transition: opacity 0.25s ease;
 
-		@include maxWidth($lg) {
-			grid-template-columns: repeat(3, 1fr);
-			gap: 2rem;
-		}
-
-		@include maxWidth($md) {
-			grid-template-columns: repeat(2, 1fr);
-			gap: 1.6rem;
-		}
-
-		@include maxWidth($sm) {
-			grid-template-columns: 1fr;
-		}
-
 		// Loading state khi AJAX đang fetch
 		&--loading {
 			opacity: 0.4;
@@ -48,6 +34,20 @@
 				background: rgba(255, 255, 255, 0.35);
 				backdrop-filter: blur(2px);
 			}
+		}
+
+		@include maxWidth($lg) {
+			grid-template-columns: repeat(3, 1fr);
+			gap: 2rem;
+		}
+
+		@include maxWidth($md) {
+			grid-template-columns: repeat(2, 1fr);
+			gap: 1.6rem;
+		}
+
+		@include maxWidth($sm) {
+			grid-template-columns: 1fr;
 		}
 	}
 
@@ -142,10 +142,6 @@
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 
-		@include maxWidth($md) {
-			font-size: rem(18);
-		}
-
 		a {
 			color: inherit;
 			text-decoration: none;
@@ -154,6 +150,10 @@
 			&:hover {
 				color: $secondColor;
 			}
+		}
+
+		@include maxWidth($md) {
+			font-size: rem(18);
 		}
 	}
 

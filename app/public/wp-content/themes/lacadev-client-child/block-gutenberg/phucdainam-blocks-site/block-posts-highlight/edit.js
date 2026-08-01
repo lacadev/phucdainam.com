@@ -23,17 +23,6 @@ import { useInserterPreview, BlockPreviewMock } from '../../utils/preview';
 
 export default function Edit( { attributes, setAttributes } ) {
 	const isPreview = useInserterPreview( attributes );
-	if ( isPreview ) {
-		return (
-			<BlockPreviewMock
-				kicker={ __( 'Posts Highlight', 'laca' ) }
-				title={
-					attributes.sectionTitle || __( 'Bài viết nổi bật', 'laca' )
-				}
-				columns={ 3 }
-			/>
-		);
-	}
 
 	const {
 		sectionTitle,
@@ -186,6 +175,24 @@ export default function Edit( { attributes, setAttributes } ) {
 		setAttributes( { selectedTerms: [], taxonomy: '' } );
 	}, [ postType ] );
 
+	const blockProps = useBlockProps( {
+		className: 'block-posts-highlight',
+	} );
+
+	const rootBlockProps = useBlockProps();
+
+	if ( isPreview ) {
+		return (
+			<BlockPreviewMock
+				kicker={ __( 'Posts Highlight', 'laca' ) }
+				title={
+					attributes.sectionTitle || __( 'Bài viết nổi bật', 'laca' )
+				}
+				columns={ 3 }
+			/>
+		);
+	}
+
 	// ── Posts to render ──────────────────────────────────────────────
 	const allPosts =
 		mode === 'manual'
@@ -207,10 +214,6 @@ export default function Edit( { attributes, setAttributes } ) {
 		const t = post?._embedded?.[ 'wp:term' ]?.[ 0 ] || [];
 		return t[ 0 ]?.name || '';
 	};
-
-	const blockProps = useBlockProps( {
-		className: 'block-posts-highlight',
-	} );
 
 	// ── Card render (horizontal: thumb left + body right) ──────────────────
 	const renderCard = ( post ) => {
@@ -520,7 +523,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					/>
 				</PanelBody>
 			</InspectorControls>
-			<div { ...useBlockProps() }>
+			<div { ...rootBlockProps }>
 				<ServerSideRender
 					block="lacadev/posts-highlight-block"
 					attributes={ attributes }

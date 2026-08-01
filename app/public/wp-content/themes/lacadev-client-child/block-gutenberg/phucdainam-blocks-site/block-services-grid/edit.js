@@ -74,6 +74,12 @@ function ImagePicker( { imageUrl, imageId, onSelect, label } ) {
 
 export default function Edit( { attributes, setAttributes } ) {
 	const isPreview = useInserterPreview( attributes );
+	const { serviceGroups, bgColor, bgOpacity } = attributes;
+
+	const blockProps = useBlockProps( {
+		className: 'wp-block-lacadev-services-grid-block',
+	} );
+
 	if ( isPreview ) {
 		return (
 			<BlockPreviewMock
@@ -83,12 +89,6 @@ export default function Edit( { attributes, setAttributes } ) {
 			/>
 		);
 	}
-
-	const { serviceGroups, bgColor, bgOpacity } = attributes;
-
-	const blockProps = useBlockProps( {
-		className: 'wp-block-lacadev-services-grid-block',
-	} );
 
 	const updateGroup = ( gIndex, key, value ) => {
 		const updated = serviceGroups.map( ( g, i ) =>
@@ -350,7 +350,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					/>
 				</PanelBody>
 			</InspectorControls>
-			<div { ...useBlockProps() }>
+			<div { ...blockProps }>
 				<ServerSideRender
 					block="lacadev/services-grid-block"
 					attributes={ attributes }

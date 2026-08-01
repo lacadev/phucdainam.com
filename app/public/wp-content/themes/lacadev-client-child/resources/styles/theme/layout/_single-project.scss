@@ -18,10 +18,6 @@ $project-color-bg-light:    #f8f8f8;
 .project-detail {
     padding: 4rem 0 8rem;
 
-    @include maxWidth($sm) {
-        padding: 0 0 3rem;
-    }
-
     &__title {
         font-weight: $bold;
         color: #fff;
@@ -81,6 +77,10 @@ $project-color-bg-light:    #f8f8f8;
         p {
             margin-bottom: 1em;
         }
+    }
+
+    @include maxWidth($sm) {
+        padding: 0 0 3rem;
     }
 }
 
@@ -373,10 +373,10 @@ $project-color-bg-light:    #f8f8f8;
     }
 
     &__list {
-        @include ulReset;
         display: flex;
         flex-direction: column;
         gap: 1.6rem;
+        @include ulReset;
     }
 
     &__link {

@@ -14,6 +14,11 @@ import { useInserterPreview, BlockPreviewMock } from '../../utils/preview';
 
 export default function Edit( { attributes, setAttributes } ) {
 	const isPreview = useInserterPreview( attributes );
+
+	const blockProps = useBlockProps( {
+		className: 'wp-block-lacadev-stats-counter-block',
+	} );
+
 	if ( isPreview ) {
 		return (
 			<BlockPreviewMock
@@ -36,10 +41,6 @@ export default function Edit( { attributes, setAttributes } ) {
 		bgColor,
 		bgOpacity,
 	} = attributes;
-
-	const blockProps = useBlockProps( {
-		className: 'wp-block-lacadev-stats-counter-block',
-	} );
 
 	const updateItem = ( index, key, value ) => {
 		const newItems = items.map( ( item, i ) =>
@@ -224,7 +225,7 @@ export default function Edit( { attributes, setAttributes } ) {
 					/>
 				</PanelBody>
 			</InspectorControls>
-			<div { ...useBlockProps() }>
+			<div { ...blockProps }>
 				<ServerSideRender
 					block="lacadev/stats-counter-block"
 					attributes={ attributes }

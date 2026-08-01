@@ -19,6 +19,17 @@ import { hexToRgba } from '../../utils/style';
 
 export default function Edit( { attributes, setAttributes } ) {
 	const isPreview = useInserterPreview( attributes );
+	const { sectionTitle, leaders, bgColor, bgOpacity } = attributes;
+	const leadersList = Array.isArray( leaders ) ? leaders : [];
+	const previewCols = Math.max( 1, Math.min( leadersList.length || 1, 4 ) );
+
+	const blockProps = useBlockProps( {
+		className: 'block-team-leaders block-team-leaders--editor-preview',
+		style: {
+			background: hexToRgba( bgColor || '#0f0f0f', bgOpacity ?? 100 ),
+		},
+	} );
+
 	if ( isPreview ) {
 		return (
 			<BlockPreviewMock
@@ -30,17 +41,6 @@ export default function Edit( { attributes, setAttributes } ) {
 			/>
 		);
 	}
-
-	const { sectionTitle, leaders, bgColor, bgOpacity } = attributes;
-	const leadersList = Array.isArray( leaders ) ? leaders : [];
-	const previewCols = Math.max( 1, Math.min( leadersList.length || 1, 4 ) );
-
-	const blockProps = useBlockProps( {
-		className: 'block-team-leaders block-team-leaders--editor-preview',
-		style: {
-			background: hexToRgba( bgColor || '#0f0f0f', bgOpacity ?? 100 ),
-		},
-	} );
 
 	const updateLeader = ( index, key, value ) => {
 		const updated = leadersList.map( ( l, i ) =>

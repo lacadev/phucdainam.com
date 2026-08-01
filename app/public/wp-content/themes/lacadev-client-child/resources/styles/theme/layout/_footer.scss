@@ -5,14 +5,6 @@
   padding: 6rem 0;
   background-color: $primaryColor;
 
-  @include maxWidth($md) {
-    padding: 4rem 0;
-  }
-
-  @include maxWidth($sm) {
-    padding: 3rem 0;
-  }
-
   .bcf__inner {
     display: flex;
     align-items: stretch;
@@ -174,6 +166,14 @@
     max-height: 420px;
     object-fit: contain;
   }
+
+  @include maxWidth($md) {
+    padding: 4rem 0;
+  }
+
+  @include maxWidth($sm) {
+    padding: 3rem 0;
+  }
 }
 
 @keyframes bcf-spin {
@@ -188,14 +188,6 @@
   position: relative;
   font-family: inherit;
   z-index: 1;
-
-  @include maxWidth($md) {
-    margin-top: 10rem;
-  }
-
-  @include maxWidth($sm) {
-    margin-top: 6rem;
-  }
 
   &__main {
     padding: 4rem 0;
@@ -232,14 +224,6 @@
   &__logo {
     display: inline-block;
     margin-bottom: 2rem;
-
-    @include maxWidth($sm) {
-      display: block;
-      margin-left: auto;
-      margin-right: auto;
-      margin-bottom: 1.6rem;
-      text-align: center;
-    }
     
     img {
       max-width: 18rem;
@@ -250,6 +234,14 @@
         margin: 0 auto;
         display: block;
       }
+    }
+
+    @include maxWidth($sm) {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 1.6rem;
+      text-align: center;
     }
   }
 
@@ -304,11 +296,6 @@
     position: relative;
     text-transform: uppercase;
 
-    @include maxWidth($sm) {
-      font-size: 1.6rem;
-      margin-bottom: 2rem;
-    }
-
     &::after {
       content: "";
       position: absolute;
@@ -317,6 +304,11 @@
       width: 4rem;
       height: 2px;
       background-color: $secondColor; // Fix: màu vàng để hiển thị trên nền nâu
+    }
+
+    @include maxWidth($sm) {
+      font-size: 1.6rem;
+      margin-bottom: 2rem;
     }
   }
 
@@ -389,5 +381,13 @@
     @include maxWidth($sm) {
       font-size: 1.2rem;
     }
+  }
+
+  @include maxWidth($md) {
+    margin-top: 10rem;
+  }
+
+  @include maxWidth($sm) {
+    margin-top: 6rem;
   }
 }

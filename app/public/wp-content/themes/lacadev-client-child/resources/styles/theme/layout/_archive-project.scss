@@ -90,20 +90,6 @@
 		position: relative;
 		transition: opacity 0.25s ease;
 
-		@include maxWidth($lg) {
-			grid-template-columns: repeat(3, 1fr);
-			gap: 2rem;
-		}
-
-		@include maxWidth($md) {
-			grid-template-columns: repeat(2, 1fr);
-			gap: 1.6rem;
-		}
-
-		@include maxWidth($xs) {
-			grid-template-columns: 1fr;
-		}
-
 		// Loading state khi AJAX đang fetch
 		&--loading {
 			opacity: 0.4;
@@ -117,6 +103,20 @@
 				background: rgba(255, 255, 255, 0.35);
 				backdrop-filter: blur(2px);
 			}
+		}
+
+		@include maxWidth($lg) {
+			grid-template-columns: repeat(3, 1fr);
+			gap: 2rem;
+		}
+
+		@include maxWidth($md) {
+			grid-template-columns: repeat(2, 1fr);
+			gap: 1.6rem;
+		}
+
+		@include maxWidth($xs) {
+			grid-template-columns: 1fr;
 		}
 	}
 

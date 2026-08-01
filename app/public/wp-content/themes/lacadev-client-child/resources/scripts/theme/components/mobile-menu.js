@@ -6,8 +6,10 @@
 
 export function initMobileMenu() {
 	const burgerBtn = document.getElementById( 'btn-hamburger' );
-	const overlay   = document.querySelector( '.header__overlay' );
-	if ( ! burgerBtn || ! overlay ) return;
+	const overlay = document.querySelector( '.header__overlay' );
+	if ( ! burgerBtn || ! overlay ) {
+		return;
+	}
 
 	const closeBtn = overlay.querySelector( '.header__overlay-close' );
 	const backdrop = overlay.querySelector( '.header__overlay-backdrop' );
@@ -37,29 +39,45 @@ export function initMobileMenu() {
 
 	// Escape key
 	document.addEventListener( 'keydown', ( e ) => {
-		if ( e.key === 'Escape' && overlay.classList.contains( 'active' ) ) closeMenu();
+		if ( e.key === 'Escape' && overlay.classList.contains( 'active' ) ) {
+			closeMenu();
+		}
 	} );
 
 	// ── Accordion: toggle submenu khi click vào link có children ──
-	overlay.querySelectorAll( '.menu-item.has-children > a, .menu-item-has-children > a' ).forEach( ( link ) => {
-		link.addEventListener( 'click', ( e ) => {
-			e.preventDefault(); // không navigate
-			e.stopPropagation();
+	overlay
+		.querySelectorAll(
+			'.menu-item.has-children > a, .menu-item-has-children > a'
+		)
+		.forEach( ( link ) => {
+			link.addEventListener( 'click', ( e ) => {
+				e.preventDefault(); // không navigate
+				e.stopPropagation();
 
-			const parentLi = link.parentElement;
-			const isOpen   = parentLi.classList.contains( 'open' );
+				const parentLi = link.parentElement;
+				const isOpen = parentLi.classList.contains( 'open' );
 
-			// Đóng siblings cùng parent ul
-			parentLi.parentElement?.querySelectorAll( ':scope > .menu-item.has-children.open, :scope > .menu-item-has-children.open' )
-				.forEach( ( sib ) => { if ( sib !== parentLi ) sib.classList.remove( 'open' ); } );
+				// Đóng siblings cùng parent ul
+				parentLi.parentElement
+					?.querySelectorAll(
+						':scope > .menu-item.has-children.open, :scope > .menu-item-has-children.open'
+					)
+					.forEach( ( sib ) => {
+						if ( sib !== parentLi ) {
+							sib.classList.remove( 'open' );
+						}
+					} );
 
-			parentLi.classList.toggle( 'open', ! isOpen );
+				parentLi.classList.toggle( 'open', ! isOpen );
+			} );
 		} );
-	} );
 
 	// Click vào link con (không có children) → đóng overlay
-	overlay.querySelectorAll( '.menu-item:not(.has-children):not(.menu-item-has-children) > a' ).forEach( ( link ) => {
-		link.addEventListener( 'click', closeMenu );
-	} );
+	overlay
+		.querySelectorAll(
+			'.menu-item:not(.has-children):not(.menu-item-has-children) > a'
+		)
+		.forEach( ( link ) => {
+			link.addEventListener( 'click', closeMenu );
+		} );
 }
-
