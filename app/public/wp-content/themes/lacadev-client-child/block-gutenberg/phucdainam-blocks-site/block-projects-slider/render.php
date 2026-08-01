@@ -578,5 +578,11 @@ if ( $show_popup ) :
         $popup_id,
         $instance
     );
-    wp_add_inline_script( 'swiper', $popup_js );
+    // Gắn vào 'theme-js-bundle' (luôn được enqueue sẵn ở mọi trang) thay vì
+    // 'swiper' — 'swiper' chỉ được đăng ký bởi block-video-feedback/
+    // block-team-carousel NẾU chúng render trước block này trong cùng trang;
+    // wp_add_inline_script() âm thầm bỏ qua (return false) khi handle đích
+    // chưa được register tại thời điểm gọi, nên JS scroll-trigger này chưa
+    // từng thực sự xuất hiện trong HTML nếu thứ tự block không thuận lợi.
+    wp_add_inline_script( 'theme-js-bundle', $popup_js );
 endif;

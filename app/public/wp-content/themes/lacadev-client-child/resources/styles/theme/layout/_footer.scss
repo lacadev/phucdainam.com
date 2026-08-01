@@ -197,6 +197,34 @@
     }
   }
 
+  &__menu {
+    &-list {
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+    &-item {
+      color: #fff;
+      display: flex;
+      align-items: flex-start;
+      font-size: 1.1rem;
+      line-height: 1.5;
+
+      @include maxWidth($sm) {
+        font-size: 1rem; // Tăng để dễ đọc trên mobile
+      }
+    }
+
+    &-link {
+      color: #fff;
+      text-decoration: none;
+
+      &:hover {
+        color: $secondColor;
+      }
+    }
+  }
+
   &__grid {
     display: flex;
     justify-content: space-between;
