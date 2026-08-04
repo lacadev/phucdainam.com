@@ -25,6 +25,7 @@ function app_bootstrap_carbon_fields_register_fields() {
         }
     }
     include_once APP_APP_SETUP_DIR . 'category_meta.php';
+    include_once APP_APP_SETUP_DIR . 'contact_page_meta.php';
 }
 
 /**

@@ -14,6 +14,12 @@ if (!defined('ABSPATH')) {
 }
 
 $site_key = carbon_get_theme_option('recaptcha_site_key');
+
+// Tiêu đề/mô tả nhập ngay trên trang đang chọn template này (Page Attributes
+// → Template → "Contact Page"), xem contact_page_meta.php. Fallback về text
+// mặc định nếu trang chưa nhập (giữ nguyên hành vi cũ).
+$contact_page_heading = carbon_get_post_meta(get_the_ID(), 'contact_page_heading') ?: __('Ping tôi tại đây', 'laca');
+$contact_page_description = carbon_get_post_meta(get_the_ID(), 'contact_page_description') ?: __('Bạn có ý tưởng mới, một dự án hay ho hay đơn giản là muốn chia sẻ một hành trình? Đừng ngần ngại, trạm luôn mở cửa đón chờ!', 'laca');
 ?>
 
 <main id="main-content" class="contact-page-template">
@@ -25,14 +31,16 @@ $site_key = carbon_get_theme_option('recaptcha_site_key');
                 <!-- Contact Info -->
                 <div class="contact-info" data-aos="fade-right">
                     <div class="info-card glass">
-                        <h2 class="section-title"><?php _e('Ping tôi tại đây', 'laca'); ?></h2>
-                        <p class="section-desc"><?php _e('Bạn có ý tưởng mới, một dự án hay ho hay đơn giản là muốn chia sẻ một hành trình? Đừng ngần ngại, trạm luôn mở cửa đón chờ!', 'laca'); ?></p>
+                        <h2 class="section-title"><?php echo esc_html($contact_page_heading); ?></h2>
+                        <p class="section-desc"><?php echo esc_html($contact_page_description); ?></p>
                         
                         <div class="info-items">
-                            <?php 
+                            <?php
                             $phone = getOption('phone_number');
                             $email = getOption('email');
                             $address = getOption('address');
+                            $address_locations = getOption('address_locations');
+                            $address_locations = is_array($address_locations) ? $address_locations : [];
                             ?>
                             
                             <?php if ($email) : ?>
@@ -59,15 +67,35 @@ $site_key = carbon_get_theme_option('recaptcha_site_key');
                                 </div>
                             <?php endif; ?>
 
-                            <div class="info-item">
-                                <div class="icon">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <?php if (!empty($address_locations)) : ?>
+                                <?php foreach ($address_locations as $location) :
+                                    $branch = trim($location['branch'] ?? '');
+                                    $loc_address = trim($location['address'] ?? '');
+                                    if (!$loc_address) continue;
+                                ?>
+                                    <div class="info-item">
+                                        <div class="icon">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        </div>
+                                        <div class="text">
+                                            <label>
+                                                <?php echo $branch ? esc_html($branch) : esc_html__('Địa điểm', 'laca'); ?>
+                                            </label>
+                                            <span><?php echo esc_html($loc_address); ?></span>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else : ?>
+                                <div class="info-item">
+                                    <div class="icon">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                    </div>
+                                    <div class="text">
+                                        <label><?php _e('Địa điểm', 'laca'); ?></label>
+                                        <span><?php echo esc_html($address ?: 'Hanoi, Vietnam'); ?></span>
+                                    </div>
                                 </div>
-                                <div class="text">
-                                    <label><?php _e('Địa điểm', 'laca'); ?></label>
-                                    <span><?php echo esc_html($address ?: 'Hanoi, Vietnam'); ?></span>
-                                </div>
-                            </div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="social-circles">
