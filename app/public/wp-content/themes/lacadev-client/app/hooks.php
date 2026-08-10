@@ -226,6 +226,16 @@ add_action('init', function () {
 });
 
 /**
+ * Bảo vệ tài khoản Super User mặc định (lacadev) — không cho user khác xoá
+ * hoặc đổi quyền, áp dụng cả REST API nên không được gate trong is_admin().
+ */
+add_action('init', function () {
+    if (class_exists('\App\Settings\Security\SuperUserGuard')) {
+        (new \App\Settings\Security\SuperUserGuard())->init();
+    }
+});
+
+/**
  * Pages/Posts list table: Add Thumbnail column
  */
 function app_add_featured_image_column($cols) {

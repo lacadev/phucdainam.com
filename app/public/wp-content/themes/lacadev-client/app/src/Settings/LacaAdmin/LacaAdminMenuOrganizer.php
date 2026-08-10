@@ -47,6 +47,10 @@ class LacaAdminMenuOrganizer
             'label' => '2FA TOTP',
             'tab' => '2fa',
         ],
+        'laca-security-superuser' => [
+            'label' => 'Super User',
+            'tab' => 'superuser',
+        ],
     ];
 
     /**
@@ -80,6 +84,7 @@ class LacaAdminMenuOrganizer
                 'laca-security-users',
                 'laca-security-login',
                 'laca-security-2fa',
+                'laca-security-superuser',
                 'laca-recaptcha',
                 'laca-login-socials',
             ],

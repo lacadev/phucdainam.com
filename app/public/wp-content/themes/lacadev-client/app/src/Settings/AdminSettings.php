@@ -333,24 +333,43 @@ class AdminSettings
 			if ($this->isSuperUser()) {
 				return;
 			}
-			
+
 			global $wpdb;
-			$super_logins = apply_filters('lacadev_super_user_logins', ['lacadev']);
-			$super_users_str = "('" . implode("','", array_map('esc_sql', $super_logins)) . "')";
+			$super_users_str = "('" . implode("','", array_map('esc_sql', self::getSuperUserLogins())) . "')";
 			$user_search->query_where = str_replace('WHERE 1=1', "WHERE 1=1 AND {$wpdb->users}.user_login NOT IN " . $super_users_str, $user_search->query_where);
 		});
 	}
 
 	/**
+	 * Danh sách login của mọi Super User hiện tại: mặc định 'lacadev' (không
+	 * thể xoá khỏi danh sách này qua UI, chỉ sửa được trong code) + những
+	 * user được thêm qua trang quản lý "Super User" (Bảo mật → Super User).
+	 * Static để SecurityManager (trang quản lý) và SuperUserGuard dùng chung,
+	 * không phải tự tính lại danh sách này ở nơi khác.
+	 *
+	 * @return string[]
+	 */
+	public static function getSuperUserLogins()
+	{
+		$super_logins = apply_filters('lacadev_super_user_logins', ['lacadev']);
+		$extra_logins = get_option('laca_extra_super_user_logins', []);
+
+		if (is_array($extra_logins) && $extra_logins) {
+			$super_logins = array_merge($super_logins, $extra_logins);
+		}
+
+		return array_values(array_unique(array_filter($super_logins)));
+	}
+
+	/**
 	 * Check if current user is a super user (Developer)
-	 * 
+	 *
 	 * @return bool
 	 */
 	protected function isSuperUser()
 	{
-		$super_logins = apply_filters('lacadev_super_user_logins', ['lacadev']);
-		$is_super     = in_array($this->currentUser->user_login, $super_logins, true);
-		
+		$is_super = in_array($this->currentUser->user_login, self::getSuperUserLogins(), true);
+
 		return apply_filters('lacadev_is_super_user', $is_super, $this->currentUser);
 	}
 

