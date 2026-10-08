@@ -31,7 +31,7 @@ const babelLoader = {
         cacheDirectory: false,
         comments: false,
         presets: [
-            '@babel/preset-env'
+            '@wordpress/babel-preset-default'
         ],
     },
 };
