@@ -1,0 +1,57 @@
+@use "@parent/styles/theme/abstracts/variables" as *;
+
+.block-stats-counter {
+    width: 100%;
+
+    &__inner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8rem;
+        flex-wrap: wrap;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 2rem;
+    }
+
+    &__item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    &__number {
+        font-size: clamp(5rem, 8vw, 10rem);
+        font-weight: 900;
+        line-height: 1;
+        color: $primaryColor;
+        display: block;
+    }
+
+    &__label {
+        font-size: 1.4rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #fff;
+        margin-top: 1rem;
+        display: block;
+    }
+
+    @media (max-width: 768px) {
+        &__inner {
+            gap: 4rem;
+        }
+
+        &__number {
+            font-size: clamp(4rem, 10vw, 6rem);
+        }
+    }
+
+    @media (max-width: 480px) {
+        &__inner {
+            flex-direction: column;
+            gap: 3rem;
+        }
+    }
+}

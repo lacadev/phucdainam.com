@@ -1,0 +1,101 @@
+@use "@parent/styles/theme/abstracts/variables" as *;
+@use "@parent/styles/theme/abstracts/mixin" as *;
+
+.laca-video-block {
+    padding: 0 !important;
+
+    &__inner {
+        width: 100%;
+    }
+
+    &__iframe-wrap {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        background: #000;
+
+        iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+    }
+
+    &__video-wrap {
+        width: 100%;
+        overflow: hidden;
+        background: #000;
+
+        video {
+            display: block;
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+    }
+
+    &__placeholder {
+        min-height: 20rem;
+        border: 2px dashed rgba(0, 0, 0, 0.2);
+        border-radius: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    // ── Overlay ───────────────────────────────────────────────────────
+    &__media-wrap {
+        position: relative;
+        width: 100%;
+    }
+
+    &__overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 1;
+        border-radius: inherit;
+    }
+
+    &__overlay-text {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2.4rem;
+        color: #fff;
+        text-align: center;
+        pointer-events: none; // cho phép tương tác với video bên dưới
+
+        > * {
+            pointer-events: auto;
+        }
+    }
+
+    @include maxWidth($md) {
+        margin-top: var(--laca-video-margin-top-tablet, var(--laca-video-margin-top, 0px));
+        margin-right: var(--laca-video-margin-right-tablet, var(--laca-video-margin-right, 0px));
+        margin-bottom: var(--laca-video-margin-bottom-tablet, var(--laca-video-margin-bottom, 0px));
+        margin-left: var(--laca-video-margin-left-tablet, var(--laca-video-margin-left, 0px));
+        padding-top: var(--laca-video-padding-top-tablet, var(--laca-video-padding-top, 0px));
+        padding-right: var(--laca-video-padding-right-tablet, var(--laca-video-padding-right, 0px));
+        padding-bottom: var(--laca-video-padding-bottom-tablet, var(--laca-video-padding-bottom, 0px));
+        padding-left: var(--laca-video-padding-left-tablet, var(--laca-video-padding-left, 0px));
+    }
+
+    @include maxWidth($sm) {
+        margin-top: var(--laca-video-margin-top-mobile, var(--laca-video-margin-top-tablet, var(--laca-video-margin-top, 0px)));
+        margin-right: var(--laca-video-margin-right-mobile, var(--laca-video-margin-right-tablet, var(--laca-video-margin-right, 0px)));
+        margin-bottom: var(--laca-video-margin-bottom-mobile, var(--laca-video-margin-bottom-tablet, var(--laca-video-margin-bottom, 0px)));
+        margin-left: var(--laca-video-margin-left-mobile, var(--laca-video-margin-left-tablet, var(--laca-video-margin-left, 0px)));
+        padding-top: var(--laca-video-padding-top-mobile, var(--laca-video-padding-top-tablet, var(--laca-video-padding-top, 0px)));
+        padding-right: var(--laca-video-padding-right-mobile, var(--laca-video-padding-right-tablet, var(--laca-video-padding-right, 0px)));
+        padding-bottom: var(--laca-video-padding-bottom-mobile, var(--laca-video-padding-bottom-tablet, var(--laca-video-padding-bottom, 0px)));
+        padding-left: var(--laca-video-padding-left-mobile, var(--laca-video-padding-left-tablet, var(--laca-video-padding-left, 0px)));
+    }
+}

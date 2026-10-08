@@ -1,0 +1,120 @@
+@use "@parent/styles/theme/abstracts/variables" as *;
+@use "@parent/styles/theme/abstracts/mixin" as *;
+
+.block-featured-projects {
+    width: 100%;
+    padding: 6rem 0;
+
+    &__inner {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem 4rem;
+        align-items: stretch;
+        margin: 0 auto;
+        padding: 0 2rem;
+
+        @include maxWidth($sm) {
+            padding: 0;
+        }
+    }
+
+    &__left {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding-top: 1rem;
+    }
+
+    &__title {
+        color: $secondColor;
+        font-weight: 900;
+        line-height: 1.1;
+        text-transform: uppercase;
+        margin: 0 0 4rem;
+
+        @include resFont(2, 3.2);
+    }
+
+    &__badges {
+        display: flex;
+        justify-content: space-between;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 4rem;
+        margin-bottom: 3.2rem;
+
+        @include maxWidth($sm) {
+            justify-content: center;
+        }
+    }
+
+    &__badge {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: center;
+        gap: 0.4rem;
+    }
+
+    &__badge-label {
+        text-transform: uppercase;
+        color: #fff;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        
+        @include resFont(1.6, 1.8);
+    }
+
+    &__badge-sublabel {
+        text-transform: uppercase;
+        color: #fff;
+        font-weight: 400;
+        letter-spacing: 0.05em;
+
+        @include resFont(1.4, 1.6);
+    }
+
+    &__cta {
+        display: inline-block;
+        color: $primaryColor;
+        font-size: 1.4rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        text-decoration: none;
+        border-bottom: 2px solid $primaryColor;
+        padding-bottom: 4px;
+        transition: opacity 0.2s;
+        align-self: flex-start;
+
+        &:hover {
+            opacity: 0.8;
+        }
+    }
+
+    &__project {
+        aspect-ratio: 16/10;
+        overflow: hidden;
+        border-radius: 4px;
+        background: rgba(255,255,255,0.05);
+        cursor: pointer;
+    }
+
+    &__img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s ease;
+        display: block;
+    }
+
+    &__project:hover &__img {
+        transform: scale(1.05);
+    }
+
+    @media (max-width: 960px) {
+        &__inner {
+            grid-template-columns: 1fr;
+        }
+    }
+}

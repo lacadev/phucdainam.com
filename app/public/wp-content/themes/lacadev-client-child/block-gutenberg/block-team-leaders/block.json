@@ -1,0 +1,94 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "lacadev/team-leaders-block",
+    "version": "1.0.0",
+    "title": "Team Leaders Block",
+    "category": "lacadev-blocks",
+    "description": "Hiển thị section lãnh đạo — ảnh cutout, tên, chức vụ và quote.",
+    "keywords": [
+        "team",
+        "leaders",
+        "người",
+        "lãnh đạo"
+    ],
+    "textdomain": "laca",
+    "supports": {
+        "html": false,
+        "align": [
+            "wide",
+            "full"
+        ]
+    },
+    "attributes": {
+        "sectionTitle": {
+            "type": "string",
+            "default": "CON NGƯỜI PHÚC ĐẠI NAM"
+        },
+        "leaders": {
+            "type": "array",
+            "default": [
+                {
+                    "imageId": 0,
+                    "imageUrl": "",
+                    "prefix": "Ông",
+                    "name": "KÔ SÔ PHA",
+                    "position": "CHỦ TỊCH HĐTV",
+                    "quote": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+                },
+                {
+                    "imageId": 0,
+                    "imageUrl": "",
+                    "prefix": "Ông",
+                    "name": "HUỲNH QUANG ĐẠI",
+                    "position": "GIÁM ĐỐC ĐIỀU HÀNH",
+                    "quote": "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+                }
+            ]
+        },
+        "bgColor": {
+            "type": "string",
+            "default": "#0f0f0f"
+        },
+        "bgOpacity": {
+            "type": "number",
+            "default": 100
+        },
+        "__isPreview": {
+            "type": "boolean",
+            "default": false
+        },
+        "heading": {
+            "type": "string",
+            "default": ""
+        },
+        "subheading": {
+            "type": "string",
+            "default": ""
+        },
+        "marginTop": {
+            "type": "number",
+            "default": 0
+        },
+        "marginBottom": {
+            "type": "number",
+            "default": 0
+        },
+        "paddingTop": {
+            "type": "number",
+            "default": 60
+        },
+        "paddingBottom": {
+            "type": "number",
+            "default": 55
+        }
+    },
+    "editorScript": "block-block-team-leaders-editor",
+    "style": "block-block-team-leaders",
+    "example": {
+        "viewportWidth": 800,
+        "attributes": {
+            "__isPreview": true
+        }
+    }
+}

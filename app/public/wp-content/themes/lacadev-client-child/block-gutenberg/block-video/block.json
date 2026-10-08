@@ -1,0 +1,183 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "lacadev/video-block",
+    "version": "1.0.0",
+    "title": "Video Block",
+    "category": "lacadev-blocks",
+    "icon": "video-alt3",
+    "description": "Nhúng video từ URL hoặc upload file video trực tiếp",
+    "supports": {
+        "html": false,
+        "anchor": true
+    },
+    "attributes": {
+        "sourceType": {
+            "type": "string",
+            "default": "url",
+            "enum": [
+                "url",
+                "file"
+            ]
+        },
+        "videoUrl": {
+            "type": "string",
+            "default": ""
+        },
+        "videoId": {
+            "type": "number",
+            "default": 0
+        },
+        "videoFileUrl": {
+            "type": "string",
+            "default": ""
+        },
+        "autoplay": {
+            "type": "boolean",
+            "default": false
+        },
+        "loop": {
+            "type": "boolean",
+            "default": false
+        },
+        "muted": {
+            "type": "boolean",
+            "default": false
+        },
+        "controls": {
+            "type": "boolean",
+            "default": true
+        },
+        "posterUrl": {
+            "type": "string",
+            "default": ""
+        },
+        "posterId": {
+            "type": "number",
+            "default": 0
+        },
+        "overlayEnabled": {
+            "type": "boolean",
+            "default": false
+        },
+        "overlayColor": {
+            "type": "string",
+            "default": "#000000"
+        },
+        "overlayOpacity": {
+            "type": "number",
+            "default": 40
+        },
+        "overlayText": {
+            "type": "string",
+            "default": ""
+        },
+        "overlayFontSize": {
+            "type": "number",
+            "default": 16
+        },
+        "overlayTextColor": {
+            "type": "string",
+            "default": "#ffffff"
+        },
+        "overlayTextAlign": {
+            "type": "string",
+            "default": "center"
+        },
+        "overlayVerticalAlign": {
+            "type": "string",
+            "default": "center"
+        },
+        "bgColor": {
+            "type": "string",
+            "default": "#0f0f0f"
+        },
+        "bgOpacity": {
+            "type": "number",
+            "default": 100
+        },
+        "__isPreview": {
+            "type": "boolean",
+            "default": false
+        },
+        "heading": {
+            "type": "string",
+            "default": ""
+        },
+        "subheading": {
+            "type": "string",
+            "default": ""
+        },
+        "spacing": {
+            "type": "object",
+            "default": {
+                "desktop": {
+                    "margin": {
+                        "top": "",
+                        "left": "",
+                        "bottom": "",
+                        "right": ""
+                    },
+                    "padding": {
+                        "top": "",
+                        "left": "",
+                        "bottom": "",
+                        "right": ""
+                    }
+                },
+                "tablet": {
+                    "margin": {
+                        "top": "",
+                        "left": "",
+                        "bottom": "",
+                        "right": ""
+                    },
+                    "padding": {
+                        "top": "",
+                        "left": "",
+                        "bottom": "",
+                        "right": ""
+                    }
+                },
+                "mobile": {
+                    "margin": {
+                        "top": "",
+                        "left": "",
+                        "bottom": "",
+                        "right": ""
+                    },
+                    "padding": {
+                        "top": "",
+                        "left": "",
+                        "bottom": "",
+                        "right": ""
+                    }
+                }
+            }
+        },
+        "marginTop": {
+            "type": "number",
+            "default": 0
+        },
+        "marginBottom": {
+            "type": "number",
+            "default": 0
+        },
+        "paddingTop": {
+            "type": "number",
+            "default": 60
+        },
+        "paddingBottom": {
+            "type": "number",
+            "default": 55
+        }
+    },
+    "textdomain": "lacadev",
+    "render": "file:./render.php",
+    "example": {
+        "viewportWidth": 800,
+        "attributes": {
+            "__isPreview": true
+        }
+    }
+}

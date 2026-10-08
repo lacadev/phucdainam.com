@@ -1,0 +1,475 @@
+@use "@parent/styles/theme/abstracts/variables" as *;
+@use "@parent/styles/theme/abstracts/mixin" as *;
+
+.wp-block-lacadev-projects-slider-block {
+    position: relative;
+    overflow: hidden;
+    padding-bottom: 6rem;
+
+    @include maxWidth($md) {
+        padding-bottom: 4rem;
+    }
+
+    @include maxWidth($sm) {
+        padding-bottom: 3rem;
+    }
+}
+
+.block-projects-slider {
+    background: #0f0f0f;
+    overflow: hidden;
+    padding-bottom: 6rem;
+    position: relative;
+
+    @include maxWidth($md) {
+        padding-bottom: 4rem;
+    }
+
+    @include maxWidth($sm) {
+        padding-bottom: 3rem;
+    }
+
+    // ── Header ──────────────────────────────────────────────────────────────
+    &__header {
+        padding: 5rem 2rem 3.2rem;
+    }
+
+    &__heading {
+        margin-bottom: 2rem;
+        color: $secondColor;
+        font-weight: $regular;
+        text-transform: uppercase;
+
+        @include resFont(1.2, 2.4);
+    }
+
+    // ── Vanilla carousel viewport + track ───────────────────────────────────
+    &__viewport {
+        overflow: hidden;
+        padding-bottom: 0;
+        position: relative;
+    }
+
+    &__track {
+        display: flex;
+        gap: 0.6rem;
+        will-change: transform;
+    }
+
+    // ── Slide ────────────────────────────────────────────────────────────────
+    &__slide {
+        flex: 0 0 clamp(32rem, 44vw, 58rem);
+        position: relative;
+        height: 52vh;
+        min-height: 28rem;
+        max-height: 60rem;
+        border-radius: 0.6rem;
+        overflow: hidden;
+        cursor: pointer;
+
+        // Slide kề mờ hơn — dùng opacity thôi, KHÔNG dùng scale/transform
+        // vì scale sẽ kích hoạt layout recalc làm giật marquee
+        opacity: 0.45;
+        transition: opacity 0.8s ease;
+
+        &.is-active {
+            opacity: 1;
+
+            .block-projects-slider__overlay {
+                opacity: 1;
+            }
+        }
+    }
+
+    // ── Image link (wrapper toàn slide) ─────────────────────────────────────
+    &__image-link {
+        display: block;
+        width: 100%;
+        height: 100%;
+        position: relative;
+        text-decoration: none;
+
+        &:focus-visible {
+            outline: 2px solid #fff;
+            outline-offset: -3px;
+        }
+    }
+
+    // ── Ảnh nền ─────────────────────────────────────────────────────────────
+    &__img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    // ── Placeholder khi không có ảnh ─────────────────────────────────────────
+    &__no-image {
+        width: 100%;
+        height: 100%;
+        background: #222;
+    }
+
+    // ── Overlay gradient + text ──────────────────────────────────────────────
+    &__overlay {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.80) 0%,
+            rgba(0, 0, 0, 0.20) 50%,
+            transparent 100%
+        );
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: flex-start;
+        padding: 3rem 2.8rem;
+        opacity: 0;          // ẩn trên slide không active
+        transition: opacity 0.4s ease;
+    }
+
+    // ── Taxonomy label nhỏ ──────────────────────────────────────────────────
+    &__cat {
+        display: block;
+        font-size: 0.9rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.65);
+        margin-bottom: 0.4rem;
+        font-family: $themeFont;
+    }
+
+    // ── Tiêu đề dự án ───────────────────────────────────────────────────────
+    &__title {
+        font-size: clamp(1.1rem, 1.4vw, 1.5rem);
+        font-weight: 500;
+        color: #fff;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin: 0 0 1.2rem;
+        line-height: 1.35;
+    }
+
+    // ── CTA pill ────────────────────────────────────────────────────────────
+    &__cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        padding: 0.7rem 1.6rem;
+        font-size: 1.1rem;
+        font-family: $themeFont;
+        letter-spacing: 0.04em;
+        border-radius: 10rem;
+        transition: background 0.22s ease, color 0.22s ease;
+
+        svg {
+            flex-shrink: 0;
+            transition: transform 0.22s ease;
+        }
+
+        .block-projects-slider__image-link:hover & {
+            background: #fff;
+            color: #111;
+
+            svg {
+                transform: translateX(3px);
+            }
+        }
+    }
+
+    // ── Navigation arrows ───────────────────────────────────────────────────
+    &__nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 10;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.2), rgba(20, 20, 20, 0.5) 60%, rgba(10, 10, 10, 0.65));
+        border: 1px solid #fff;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.22s ease, border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+
+        svg {
+            width: 2rem;
+            height: 2rem;
+            stroke-width: 2.2;
+            opacity: 0.95;
+        }
+
+        &:hover {
+            background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.32), rgba(22, 22, 22, 0.55) 62%, rgba(10, 10, 10, 0.72));
+            border-color: rgba(255, 255, 255, 0.55);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42), inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+            transform: translateY(-50%) scale(1.03);
+        }
+
+        &:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.9);
+            outline-offset: 2px;
+        }
+
+        &:active {
+            transform: translateY(-50%) scale(0.98);
+        }
+
+        &--prev { left: 1.2rem; }
+        &--next { right: 1.2rem; }
+
+        @include maxWidth($sm) {
+            width: 6.2rem;
+            height: 6.2rem;
+            svg {
+                width: 2.8rem;
+                height: 2.8rem;
+            }
+            &--prev { left: 0.8rem; }
+            &--next { right: 0.8rem; }
+        }
+    }
+
+    // ── Empty state ─────────────────────────────────────────────────────────
+    &__empty {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.4);
+        padding: 4rem 2rem;
+        font-size: 1.4rem;
+    }
+
+    // ── Responsive ───────────────────────────────────────────────────────────
+    @include maxWidth($md) {
+        &__header {
+            padding: 3.6rem 1.6rem 2.4rem;
+        }
+        &__slide {
+            height: 45vh;
+        }
+        &__overlay {
+            padding: 2.4rem 2rem;
+        }
+    }
+
+    @include maxWidth($sm) {
+        &__header {
+            padding: 2.8rem 1.6rem 2rem;
+        }
+        &__slide {
+            height: 60vw;
+            min-height: 22rem;
+        }
+        &__overlay {
+            padding: 1.6rem 1.4rem;
+        }
+        &__title {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+    }
+}
+
+// ── Popup Contact Form Overlay ──────────────────────────────────────────────
+.pslider-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.35s ease, visibility 0.35s ease;
+
+    &--visible {
+        opacity: 1;
+        visibility: visible;
+
+        .pslider-popup__panel {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+    }
+
+    // ── Backdrop ────────────────────────────────────────────────────────────
+    &__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(6px);
+    }
+
+    // ── Panel ───────────────────────────────────────────────────────────────
+    &__panel {
+        position: relative;
+        z-index: 1;
+        width: min(480px, 92vw);
+        background: #1a1a1a;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1.6rem;
+        padding: 2.8rem 2.4rem;
+        box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.5);
+        transform: translateY(2rem) scale(0.95);
+        opacity: 0;
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                    opacity 0.3s ease;
+
+        @include maxWidth($sm) {
+            padding: 2rem 1.4rem;
+            border-radius: 1.2rem;
+        }
+    }
+
+    // ── Close button ────────────────────────────────────────────────────────
+    &__close {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        border-radius: 50%;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.2s ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    }
+
+    // ── Title ───────────────────────────────────────────────────────────────
+    &__title {
+        color: $secondColor;
+        font-weight: $regular;
+        font-style: italic;
+        text-transform: uppercase;
+        margin-bottom: 1.8rem;
+        font-size: 1.4rem;
+        text-align: center;
+    }
+
+    // ── Form fields ─────────────────────────────────────────────────────────
+    &__field {
+        margin-bottom: 0.8rem;
+    }
+
+    &__input,
+    &__select {
+        display: block;
+        width: 100%;
+        padding: 0.9rem 1.2rem;
+        font-size: 0.85rem;
+        font-family: inherit;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 2rem;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        appearance: none;
+        -webkit-appearance: none;
+
+        &::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        &:focus {
+            border-color: $secondColor;
+            box-shadow: 0 0 0 3px rgba(240, 193, 27, 0.15);
+        }
+    }
+
+    &__select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 1.2rem center;
+        background-size: 14px;
+        padding-right: 3rem;
+        cursor: pointer;
+
+        option {
+            background: #1a1a1a;
+            color: #fff;
+        }
+    }
+
+    // ── Submit button ───────────────────────────────────────────────────────
+    &__btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        width: 100%;
+        margin-top: 1.2rem;
+        padding: 0.9rem 2rem;
+        font-size: 0.85rem;
+        font-weight: $bold;
+        font-family: inherit;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #222;
+        background: $secondColor;
+        border: none;
+        border-radius: 2rem;
+        cursor: pointer;
+        transition: filter 0.22s ease, transform 0.15s ease;
+
+        &:hover {
+            filter: brightness(1.1);
+        }
+
+        &:active {
+            transform: scale(0.98);
+        }
+
+        &--loading {
+            pointer-events: none;
+            opacity: 0.7;
+
+            .pslider-popup__btn-text { display: none; }
+            .pslider-popup__btn-loader { display: inline-flex; }
+        }
+    }
+
+    &__btn-loader {
+        display: none;
+        animation: pslider-spin 0.8s linear infinite;
+    }
+
+    @keyframes pslider-spin {
+        to { transform: rotate(360deg); }
+    }
+
+    // ── Message ─────────────────────────────────────────────────────────────
+    &__msg {
+        margin-top: 0.8rem;
+        padding: 0.6rem 1rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        text-align: center;
+
+        &--ok {
+            background: rgba(76, 175, 80, 0.15);
+            color: #4caf50;
+        }
+
+        &--err {
+            background: rgba(244, 67, 54, 0.15);
+            color: #f44336;
+        }
+    }
+}

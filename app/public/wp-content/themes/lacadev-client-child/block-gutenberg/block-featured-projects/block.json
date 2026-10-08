@@ -1,0 +1,114 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "lacadev/featured-projects-block",
+    "version": "1.0.0",
+    "title": "Featured Projects Block",
+    "category": "lacadev-blocks",
+    "description": "Section DỰ ÁN BIỂU TƯỢNG — title lớn góc trái, badges, lưới 2x2 ảnh dự án.",
+    "keywords": [
+        "projects",
+        "featured",
+        "dự án",
+        "portfolio"
+    ],
+    "textdomain": "laca",
+    "supports": {
+        "html": false,
+        "align": [
+            "wide",
+            "full"
+        ]
+    },
+    "attributes": {
+        "sectionTitle": {
+            "type": "string",
+            "default": "DỰ ÁN BIỂU TƯỢNG"
+        },
+        "badges": {
+            "type": "array",
+            "default": [
+                {
+                    "label": "CHẤT LƯỢNG",
+                    "sublabel": "VƯỢT TRỘI"
+                },
+                {
+                    "label": "GIẢI PHÁP",
+                    "sublabel": "HOÀN THIỆN"
+                }
+            ]
+        },
+        "ctaText": {
+            "type": "string",
+            "default": ""
+        },
+        "ctaUrl": {
+            "type": "string",
+            "default": ""
+        },
+        "mode": {
+            "type": "string",
+            "default": "auto"
+        },
+        "postType": {
+            "type": "string",
+            "default": "project"
+        },
+        "postIds": {
+            "type": "array",
+            "default": []
+        },
+        "postsCount": {
+            "type": "number",
+            "default": 3
+        },
+        "orderBy": {
+            "type": "string",
+            "default": "date"
+        },
+        "bgColor": {
+            "type": "string",
+            "default": "#0f0f0f"
+        },
+        "bgOpacity": {
+            "type": "number",
+            "default": 100
+        },
+        "__isPreview": {
+            "type": "boolean",
+            "default": false
+        },
+        "heading": {
+            "type": "string",
+            "default": ""
+        },
+        "subheading": {
+            "type": "string",
+            "default": ""
+        },
+        "marginTop": {
+            "type": "number",
+            "default": 0
+        },
+        "marginBottom": {
+            "type": "number",
+            "default": 0
+        },
+        "paddingTop": {
+            "type": "number",
+            "default": 60
+        },
+        "paddingBottom": {
+            "type": "number",
+            "default": 55
+        }
+    },
+    "editorScript": "block-block-featured-projects-editor",
+    "style": "block-block-featured-projects",
+    "example": {
+        "viewportWidth": 800,
+        "attributes": {
+            "__isPreview": true
+        }
+    }
+}

@@ -1,0 +1,305 @@
+@use "@parent/styles/theme/abstracts/variables" as *;
+@use "@parent/styles/theme/abstracts/mixin" as *;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Journey Gallery Block
+// Desktop : CSS Grid 2×2 — bước lẻ hàng trên, bước chẵn hàng dưới
+// Mobile  : flex-column zigzag + đường dọc bên phải
+// ─────────────────────────────────────────────────────────────────────────────
+
+.journey-gallery {
+    margin-top: var(--journey-margin-top, 0px);
+    margin-right: var(--journey-margin-right, 0px);
+    margin-bottom: var(--journey-margin-bottom, 0px);
+    margin-left: var(--journey-margin-left, 0px);
+    padding-top: var(--journey-padding-top, 60px);
+    padding-right: var(--journey-padding-right, 0px);
+    padding-bottom: var(--journey-padding-bottom, 55px);
+    padding-left: var(--journey-padding-left, 0px);
+    overflow: hidden;
+
+    @include maxWidth($md) {
+        margin-top: var(--journey-margin-top-tablet, var(--journey-margin-top, 0px));
+        margin-right: var(--journey-margin-right-tablet, var(--journey-margin-right, 0px));
+        margin-bottom: var(--journey-margin-bottom-tablet, var(--journey-margin-bottom, 0px));
+        margin-left: var(--journey-margin-left-tablet, var(--journey-margin-left, 0px));
+        padding-top: var(--journey-padding-top-tablet, var(--journey-padding-top, 60px));
+        padding-right: var(--journey-padding-right-tablet, var(--journey-padding-right, 0px));
+        padding-bottom: var(--journey-padding-bottom-tablet, var(--journey-padding-bottom, 55px));
+        padding-left: var(--journey-padding-left-tablet, var(--journey-padding-left, 0px));
+    }
+    @include maxWidth($sm) {
+        margin-top: var(--journey-margin-top-mobile, var(--journey-margin-top-tablet, var(--journey-margin-top, 0px)));
+        margin-right: var(--journey-margin-right-mobile, var(--journey-margin-right-tablet, var(--journey-margin-right, 0px)));
+        margin-bottom: var(--journey-margin-bottom-mobile, var(--journey-margin-bottom-tablet, var(--journey-margin-bottom, 0px)));
+        margin-left: var(--journey-margin-left-mobile, var(--journey-margin-left-tablet, var(--journey-margin-left, 0px)));
+        padding-top: var(--journey-padding-top-mobile, var(--journey-padding-top-tablet, var(--journey-padding-top, 60px)));
+        padding-right: var(--journey-padding-right-mobile, var(--journey-padding-right-tablet, var(--journey-padding-right, 0px)));
+        padding-bottom: var(--journey-padding-bottom-mobile, var(--journey-padding-bottom-tablet, var(--journey-padding-bottom, 55px)));
+        padding-left: var(--journey-padding-left-mobile, var(--journey-padding-left-tablet, var(--journey-padding-left, 0px)));
+    }
+
+    // ── Track (CSS Grid on desktop) ────────────────────────────────────────
+    &__track {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        justify-content: space-between;
+        gap: 2rem;
+
+        &::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            transform: translateY(-50%);
+            background: #fff;
+            pointer-events: none;
+
+            @include maxWidth($xxl) {
+                top: 0;
+                right: 50%;
+                transform: translate(50%, 0);
+                width: 1px;
+                height: 100%;
+            }
+
+            @include maxWidth($md) {
+                content: none;
+            }
+        }
+
+        @include maxWidth($xxl) {
+            grid-template-columns: repeat(1, 1fr);
+        }
+    }
+
+    // ── Step ──────────────────────────────────────────────────────────────
+    &__step {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 10rem;
+
+        @include maxWidth($xxl) {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            align-items: flex-start;
+            gap: 5rem;
+        }
+
+        @include maxWidth($xl) {
+            gap: 3rem;
+        }
+
+        @include maxWidth($md) {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto auto;
+            gap: 2rem;
+        }
+
+        &::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            right: 50%;
+            transform: translate(50%, -50%);
+            width: 1rem;
+            height: 1rem;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #fff;
+            z-index: 1;
+
+            @include maxWidth($md) {
+                content: none;
+            }
+        }
+
+        &--even {
+            flex-direction: column-reverse;
+
+            @include maxWidth($xxl) {
+                .journey-gallery__content {
+                    order: 2;
+                }
+
+                .journey-gallery__image {
+                    order: 1;
+                }
+            }
+
+            @include maxWidth($md) {
+                flex-direction: unset;
+
+                .journey-gallery__content {
+                    order: 1;
+                }
+
+                .journey-gallery__image {
+                    order: 2;
+                }
+            }
+        }
+    }
+
+    // ── Content ────────────────────────────────────────────────────────────
+    &__content {
+        display: flex;
+        align-items: center;
+
+        @include maxWidth($xxl) {
+            width: 100%;
+            max-width: none;
+            align-self: center;
+            align-items: start;
+        }
+
+        @include maxWidth($md) {
+            flex-basis: 100%;
+            max-width: 100%;
+        }
+    }
+
+    &__number {
+        font-weight: $black;
+        line-height: .8;
+        color: $secondColor;
+        margin-bottom: .6rem;
+
+        @include resFont(12rem, 18rem);
+    }
+
+    &__title {
+        margin: 0 0 1.4rem;
+        display: inline-block;
+        font-size: rem(24);
+        line-height: 1.35;
+        font-weight: $bold;
+        text-transform: uppercase;
+        color: $secondColor;
+        border-bottom: 1px solid $secondColor;
+
+        @include maxWidth($xxl) {
+            font-size: rem(18);
+            margin-bottom: 1rem;
+        }
+    
+        @include maxWidth($lg) {
+            font-size: rem(16);
+        }
+    
+        @include maxWidth($sm) {
+            font-size: rem(14);
+        }
+    }
+
+    &__desc {
+        color: #fff;
+        line-height: 1.5;
+        margin: 0;
+        text-align: justify;
+        font-size: rem(16);
+        
+        @include maxWidth($xl) {
+            font-size: rem(14);
+        }
+    }
+
+    // ── Image ─────────────────────────────────────────────────────────────
+    &__image {
+        @include maxWidth($xxl) {
+            width: 100%;
+            max-width: none;
+        }
+
+        @include maxWidth($md) {
+            flex-basis: 100%;
+            max-width: 100%;
+        }
+
+        img {
+            display: block;
+            width: 100%;
+            aspect-ratio: 325 / 196;
+            object-fit: cover;
+            border-radius: 1rem;
+
+            @include maxWidth($sm) { border-radius: .8rem; }
+        }
+    }
+
+    // ── Timeline ngang (desktop) ─────────────────────────────────────────
+    // &__timeline {
+    //     grid-column: 1 / -1;
+    //     grid-row: 2;
+    //     position: relative;
+    //     display: flex;
+    //     align-items: center;
+    //     justify-content: space-around;
+    //     padding: 1rem 0;
+    //     margin: 0 0 .5rem;
+
+    //     @include maxWidth($md) { display: none; } // ẩn trên mobile (dùng đường dọc CSS)
+    // }
+
+    // &__timeline-line {
+    //     position: absolute;
+    //     left: 0;
+    //     right: 0;
+    //     top: 50%;
+    //     transform: translateY(-50%);
+    //     height: 1px;
+    //     background: #fff;
+
+    //     @include maxWidth($md) { display: none; }
+    // }
+
+    // &__timeline-dot {
+    //     position: relative;
+    //     z-index: 1;
+    //     display: inline-block;
+    //     width: .9rem;
+    //     height: .9rem;
+    //     border-radius: 50%;
+    //     background: #fff;
+    //     border: 2px solid #fff;
+
+    //     @include maxWidth($md) { display: none; }
+    // }
+}
+
+// ── Editor: đồng bộ màu + typography với frontend ─────────────────────────────
+.editor-styles-wrapper .wp-block-journey-gallery-block.journey-gallery {
+    --second-color: #F0C11B;
+    color: #fff;
+    font-family: $themeFont;
+
+    .block-journey-gallery__heading {
+        color: $secondColor;
+        @include resFont(1.2, 2.4);
+    }
+
+    .block-journey-gallery__subheading {
+        color: rgba(255, 255, 255, .7);
+        @include resFont(.9, 1.1);
+    }
+
+    .block-journey-gallery__title {
+        color: $secondColor;
+        @include resFont(1, 1.5);
+    }
+
+    .block-journey-gallery__desc {
+        color: rgba(255, 255, 255, .65);
+        @include resFont(.8, 1);
+    }
+
+    .block-journey-gallery__number {
+        color: $secondColor;
+        @include resFont(12, 18);
+    }
+}

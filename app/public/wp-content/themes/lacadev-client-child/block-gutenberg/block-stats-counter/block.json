@@ -1,0 +1,105 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "lacadev/stats-counter-block",
+    "version": "1.0.0",
+    "title": "Stats Counter Block",
+    "category": "lacadev-blocks",
+    "description": "Hiển thị hàng số thống kê với animation count-up khi cuộn vào viewport.",
+    "keywords": [
+        "stats",
+        "counter",
+        "numbers",
+        "thống kê"
+    ],
+    "textdomain": "laca",
+    "supports": {
+        "html": false,
+        "align": [
+            "wide",
+            "full"
+        ]
+    },
+    "attributes": {
+        "items": {
+            "type": "array",
+            "default": [
+                {
+                    "number": "15",
+                    "suffix": "+",
+                    "label": "NĂM THÀNH LẬP"
+                },
+                {
+                    "number": "500",
+                    "suffix": "+",
+                    "label": "DỰ ÁN"
+                },
+                {
+                    "number": "50",
+                    "suffix": "+",
+                    "label": "NHÂN SỰ"
+                }
+            ]
+        },
+        "numberColor": {
+            "type": "string",
+            "default": "#F5C400"
+        },
+        "labelColor": {
+            "type": "string",
+            "default": "#FFFFFF"
+        },
+        "paddingTop": {
+            "type": "number",
+            "default": 60
+        },
+        "paddingBottom": {
+            "type": "number",
+            "default": 60
+        },
+        "countUpDuration": {
+            "type": "number",
+            "default": 2000
+        },
+        "countUpTrigger": {
+            "type": "string",
+            "default": "viewport"
+        },
+        "bgColor": {
+            "type": "string",
+            "default": "#0f0f0f"
+        },
+        "bgOpacity": {
+            "type": "number",
+            "default": 100
+        },
+        "__isPreview": {
+            "type": "boolean",
+            "default": false
+        },
+        "heading": {
+            "type": "string",
+            "default": ""
+        },
+        "subheading": {
+            "type": "string",
+            "default": ""
+        },
+        "marginTop": {
+            "type": "number",
+            "default": 0
+        },
+        "marginBottom": {
+            "type": "number",
+            "default": 0
+        }
+    },
+    "editorScript": "block-block-stats-counter-editor",
+    "style": "block-block-stats-counter",
+    "example": {
+        "viewportWidth": 800,
+        "attributes": {
+            "__isPreview": true
+        }
+    }
+}
