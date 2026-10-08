@@ -110,8 +110,15 @@ class Post extends WP_REST_Controller {
 		}
 
 		if ( $object_type === 'term' ) {
-			$taxonomy = get_term( $object_id )->taxonomy;
-			return in_array( $taxonomy, Helper::get_allowed_taxonomies(), true );
+			$term = get_term( $object_id );
+			if ( ! $term || is_wp_error( $term ) ) {
+				return false;
+			}
+
+			return (
+				in_array( $term->taxonomy, Helper::get_allowed_taxonomies(), true ) &&
+				current_user_can( get_taxonomy( $term->taxonomy )->cap->edit_terms, $object_id )
+			);
 		}
 
 		$post_type = get_post_type( $object_id );
@@ -162,12 +169,14 @@ class Post extends WP_REST_Controller {
 
 		$sanitizer = Sanitize::get();
 		if ( 'image_title' === $column ) {
-			wp_update_post(
-				[
-					'ID'         => $object_id,
-					'post_title' => $sanitizer->sanitize( 'image_title', $value ),
-				]
-			);
+			if ( 'term' !== $object_type ) {
+				wp_update_post(
+					[
+						'ID'         => $object_id,
+						'post_title' => $sanitizer->sanitize( 'image_title', $value ),
+					]
+				);
+			}
 			return;
 		}
 
@@ -193,7 +202,7 @@ class Post extends WP_REST_Controller {
 		return [
 			'rows' => [
 				'required'          => true,
-				'description'       => esc_html__( 'Selected posts to update the data for.', 'rank-math' ),
+				'description'       => esc_html__( 'Selected posts to update the data for.', 'seo-by-rank-math' ),
 				'validate_callback' => [ '\\RankMath\\Rest\\Rest_Helper', 'is_param_empty' ],
 			],
 		];

@@ -1244,7 +1244,17 @@ Query.prototype.show = function() {
     return this;
 };
 Query.prototype.ready = function(callback) {
-    document.addEventListener('DOMContentLoaded', callback);
+    // Reference: https://github.com/jquery/jquery/blob/main/src/core/ready.js
+    // and https://developer.mozilla.org/en-US/docs/Web/API/Document/DOMContentLoaded_event
+    if (document.readyState !== 'loading') {
+        // DOMContentLoaded has already fired; handle it asynchronously like jQuery
+        setTimeout(callback);
+    } else {
+        document.addEventListener('DOMContentLoaded', callback, {
+            once: true
+        });
+    }
+    return this;
 };
 Query.prototype.scrollTop = function(value) {
     if (value === undefined) {
@@ -1437,7 +1447,7 @@ Query.event = {
 
 /* globals jQuery */ var defaults_DEARVIEWER = {
     jQuery: null,
-    version: '2.4.30',
+    version: '2.4.37',
     autoDetectLocation: true,
     _isHashTriggered: false,
     slug: undefined,
@@ -1909,6 +1919,9 @@ var utils = DV.utils = {
         try {
             if (url === null || url === void 0) return null;
             if (typeof url !== "string") return url;
+            // No scheme present — relative ("file.pdf") or protocol-relative
+            // ("//host/path"). Nothing to http/https-correct; return as-is.
+            if (url.indexOf("://") === -1) return url;
             var location = window.location;
             if (location.href.split(".")[0] === url.split(".")[0]) return url;
             var urlHostName = url.split("://")[1].split("/")[0];
@@ -1933,6 +1946,23 @@ var utils = DV.utils = {
             console.log("Skipping URL correction: " + url);
         }
         return url;
+    },
+    // Resolve a value to a safe absolute http(s) URL, or "" if it isn't one.
+    // Only explicit absolute http(s) URLs are accepted. Used for untrusted
+    // option values (logo, logoUrl) that are placed into href/src.
+    safeURL: function safeURL(url) {
+        if (url == null) return "";
+        var s = ("" + url).trim();
+        // Require an explicit absolute http(s) URL. Rejecting anything that does
+        // not start with http:// or https:// stops new URL() from coercing junk
+        // (e.g. "<img src=x onerror=...>") into a resolved same-origin URL, and
+        // also blocks relative paths, protocol-relative URLs, and javascript:/data:.
+        if (!/^https?:\/\//i.test(s)) return "";
+        try {
+            var u = new URL(s);
+            if (u.protocol === "http:" || u.protocol === "https:") return u.href;
+        } catch (e) {}
+        return "";
     },
     rotateStr: function rotateStr(deg) {
         return ' rotateZ(' + deg + 'deg) ';
@@ -2709,13 +2739,14 @@ defaults_DEARVIEWER.parseThumbs = function(args) {
         args.element.addClass("df-thumb-not-found");
         args.thumbURL = defaults_DEARVIEWER.defaults.popupThumbPlaceholder;
     }
-    var titleElement = utils_jQuery("<span class='df-book-title'>").html(args.title);
+    var titleElement = utils_jQuery("<span class='df-book-title'>").text(args.title);
     var wrapperElement = utils_jQuery("<div class='df-book-wrapper'>").appendTo(args.element);
     wrapperElement.append(utils_jQuery("<div class='df-book-page1'>"));
     wrapperElement.append(utils_jQuery("<div class='df-book-page2'>"));
     var coverElement = utils_jQuery("<div class='df-book-cover'>").append(titleElement).appendTo(wrapperElement);
     var skipLazy = args.element.hasClass("df-skip-lazy");
-    var image = utils_jQuery('<img width="210px" height="297px" class="df-lazy" alt="' + args.title + '"/>');
+    var image = utils_jQuery('<img width="210px" height="297px" class="df-lazy" alt=""/>');
+    image.attr("alt", args.title);
     coverElement.prepend(image);
     if (skipLazy) {
         image.attr('src', args.thumbURL);
@@ -2788,7 +2819,7 @@ defaults_DEARVIEWER.parseNormalElements = function() {
                     var thumbLayout = element.data("df-thumb-layout") || defaults_DEARVIEWER.defaults.thumbLayout;
                     var thumbURL = utils.httpsCorrection(element.data("df-thumb"));
                     element.removeAttr("data-thumb").removeAttr("data-thumb-layout");
-                    var innerText = element.html().trim();
+                    var innerText = element.text().trim();
                     if (innerText === undefined || innerText === "") {
                         innerText = "Click to Open";
                     }
@@ -11251,12 +11282,14 @@ var UI = /*#__PURE__*/ function() {
             key: "createLogo",
             value: function createLogo() {
                 var app = this.app;
-                var logo = null;
-                if (app.options.logo.indexOf("<") > -1) {
-                    logo = controls_jQuery(app.options.logo).addClass("df-logo df-logo-html");
-                } else if (app.options.logo.trim().length > 2) {
-                    logo = controls_jQuery('<a class="df-logo df-logo-img" target="_blank" href="' + app.options.logoUrl + '"><img alt="" src="' + app.options.logo + '"/>');
-                }
+                // logo is a plain image URL (http/https only). HTML logo markup is no
+                // longer accepted — it was an XSS sink (jQuery(html) / attribute breakout).
+                var src = controls_utils.safeURL(app.options.logo);
+                if (!src) return;
+                var logo = controls_jQuery('<a class="df-logo df-logo-img" target="_blank" rel="noopener"><img alt=""/></a>');
+                var href = controls_utils.safeURL(app.options.logoUrl);
+                if (href) logo.attr("href", href);
+                logo.find("img").attr("src", src);
                 this.element.append(logo);
             }
         },

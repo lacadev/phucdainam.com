@@ -4,7 +4,7 @@
  * Plugin Name: 3D FlipBook : DearFlip Lite
  * Description: Realistic 3D Flip-books for WordPress <a href="https://dearflip.com/go/wp-lite-full-version" >Get Full Version Here</a><strong> NOTE : Deactivate this lite version before activating Full Version</strong>
  *
- * Version: 2.4.30
+ * Version: 2.4.37
  * Text Domain: 3d-flipbook-dflip-lite
  * Author: DearHive
  * Author URI: https://dearflip.com/go/wp-lite-author
@@ -45,7 +45,7 @@ if ( !class_exists( 'DFlip' ) ) {
      *
      * @var string
      */
-    public $version = '2.4.30';
+    public $version = '2.4.37';
 
     /**
      * The name of the plugin.

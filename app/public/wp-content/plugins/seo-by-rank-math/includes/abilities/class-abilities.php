@@ -11,6 +11,16 @@
 namespace RankMath\Abilities;
 
 use RankMath\Abilities\SEO_Analysis\Subscriber as SEO_Analysis_Subscriber;
+use RankMath\Abilities\Link_Genius\Subscriber as Link_Genius_Subscriber;
+use RankMath\Abilities\Post_SEO\Subscriber as Post_SEO_Subscriber;
+use RankMath\Abilities\Schema\Subscriber as Schema_Subscriber;
+use RankMath\Abilities\Analytics\Subscriber as Analytics_Subscriber;
+use RankMath\Abilities\AI_Visibility\Subscriber as AI_Visibility_Subscriber;
+use RankMath\Abilities\Settings\Subscriber as Settings_Subscriber;
+use RankMath\Abilities\Content_Analysis\Subscriber as Content_Analysis_Subscriber;
+use RankMath\Abilities\Sitemap\Subscriber as Sitemap_Subscriber;
+use RankMath\Abilities\Monitor_404\Subscriber as Monitor_404_Subscriber;
+use RankMath\Abilities\Redirections\Subscriber as Redirections_Subscriber;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -59,6 +69,16 @@ class Abilities {
 
 		$subscribers = [
 			new SEO_Analysis_Subscriber( $shared_meta ),
+			new Link_Genius_Subscriber( $shared_meta ),
+			new Post_SEO_Subscriber( $shared_meta ),
+			new Schema_Subscriber( $shared_meta ),
+			new Analytics_Subscriber( $shared_meta ),
+			new AI_Visibility_Subscriber( $shared_meta ),
+			new Settings_Subscriber( $shared_meta ),
+			new Content_Analysis_Subscriber( $shared_meta ),
+			new Sitemap_Subscriber( $shared_meta ),
+			new Monitor_404_Subscriber( $shared_meta ),
+			new Redirections_Subscriber( $shared_meta ),
 		];
 
 		foreach ( $subscribers as $subscriber ) {

@@ -162,13 +162,14 @@ class Screen implements IScreen {
 					'powerWords'      => $this->power_words(),
 					'diacritics'      => $this->diacritics(),
 					'researchesTests' => $this->get_analysis(),
-					'hasRedirection'  => Helper::is_module_active( 'redirections' ),
+					'hasRedirection'  => Helper::has_cap( 'redirections' ) && Helper::is_module_active( 'redirections' ),
 					'hasBreadcrumb'   => Helper::is_breadcrumbs_enabled(),
 				],
 				'isPro'               => defined( 'RANK_MATH_PRO_FILE' ),
 				'is_front_page'       => Admin_Helper::is_home_page(),
+				'frontPageId'         => (int) get_option( 'page_on_front' ),
 				'trendsUpgradeLink'   => esc_url_raw( $trends_link ),
-				'trendsUpgradeLabel'  => esc_html__( 'Upgrade', 'rank-math' ),
+				'trendsUpgradeLabel'  => esc_html__( 'Upgrade', 'seo-by-rank-math' ),
 				'trendsPreviewImage'  => esc_url( rank_math()->plugin_url() . 'assets/admin/img/trends-preview.jpg' ),
 				'currentEditor'       => $editor,
 				'homepageData'        => [
@@ -177,22 +178,7 @@ class Screen implements IScreen {
 						'diacritics'      => $this->diacritics(),
 						'researchesTests' => $this->get_analysis(),
 						'hasBreadcrumb'   => Helper::is_breadcrumbs_enabled(),
-						'serpData'        => [
-							'title'               => Helper::get_settings( 'titles.homepage_title' ),
-							'description'         => Helper::get_settings( 'titles.homepage_description', '' ),
-							'titleTemplate'       => '%sitename% %page% %sep% %sitedesc%',
-							'descriptionTemplate' => '',
-							'focusKeywords'       => '',
-							'breadcrumbTitle'     => Helper::get_settings( 'general.breadcrumbs_home_label' ),
-							'robots'              => $this->normalize_robots( Helper::get_settings( 'titles.homepage_robots' ) ),
-							'advancedRobots'      => $this->normalize_advanced_robots( Helper::get_settings( 'titles.homepage_advanced_robots' ) ),
-
-							// Facebook.
-							'facebookTitle'       => Helper::get_settings( 'titles.homepage_facebook_title', '' ),
-							'facebookDescription' => Helper::get_settings( 'titles.homepage_facebook_description', '' ),
-							'facebookImage'       => Helper::get_settings( 'titles.homepage_facebook_image', '' ),
-							'facebookImageID'     => Helper::get_settings( 'titles.homepage_facebook_image_id', '' ),
-						],
+						'serpData'        => $this->get_homepage_serp_data(),
 					],
 				],
 			]
@@ -200,6 +186,51 @@ class Screen implements IScreen {
 
 		$values = $this->do_filter( 'metabox/values', $values, $this );
 		return $this->do_filter( 'metabox/' . $this->get_object_type() . '/values', $values, $this );
+	}
+
+	/**
+	 * Get serpData for the homepageData assessor.
+	 *
+	 * Uses the static front page's post meta when show_on_front = 'page',
+	 * otherwise falls back to global homepage settings.
+	 *
+	 * @return array
+	 */
+	private function get_homepage_serp_data() {
+		$title_tpl = Helper::get_settings( 'titles.pt_page_title', '%title% %sep% %sitename%' );
+		$desc_tpl  = Helper::get_settings( 'titles.pt_page_description', '' );
+		$robots    = $this->normalize_robots( Helper::get_settings( 'titles.homepage_robots' ) );
+		$adv       = $this->normalize_advanced_robots( Helper::get_settings( 'titles.homepage_advanced_robots' ) );
+
+		$id = 'page' === get_option( 'show_on_front' ) ? (int) get_option( 'page_on_front' ) : 0;
+		if ( $id ) {
+			$robots = $this->normalize_robots( Helper::get_post_meta( 'robots', $id ) );
+			$adv    = $this->normalize_advanced_robots( Helper::get_post_meta( 'advanced_robots', $id ) );
+		}
+
+		$title      = $id ? Helper::get_post_meta( 'title', $id ) : Helper::get_settings( 'titles.homepage_title' );
+		$desc       = $id ? Helper::get_post_meta( 'description', $id ) : Helper::get_settings( 'titles.homepage_description', '' );
+		$keywords   = $id ? Helper::get_post_meta( 'focus_keyword', $id ) : '';
+		$breadcrumb = $id ? Helper::get_post_meta( 'breadcrumb_title', $id ) : Helper::get_settings( 'general.breadcrumbs_home_label' );
+		$fb_title   = $id ? Helper::get_post_meta( 'facebook_title', $id ) : Helper::get_settings( 'titles.homepage_facebook_title', '' );
+		$fb_desc    = $id ? Helper::get_post_meta( 'facebook_description', $id ) : Helper::get_settings( 'titles.homepage_facebook_description', '' );
+		$fb_image   = $id ? Helper::get_post_meta( 'facebook_image', $id ) : Helper::get_settings( 'titles.homepage_facebook_image', '' );
+		$fb_img_id  = $id ? Helper::get_post_meta( 'facebook_image_id', $id ) : Helper::get_settings( 'titles.homepage_facebook_image_id', '' );
+
+		return [
+			'title'               => $title,
+			'description'         => $desc,
+			'titleTemplate'       => $title_tpl,
+			'descriptionTemplate' => $desc_tpl,
+			'focusKeywords'       => $keywords,
+			'breadcrumbTitle'     => $breadcrumb,
+			'robots'              => $robots,
+			'advancedRobots'      => $adv,
+			'facebookTitle'       => $fb_title,
+			'facebookDescription' => $fb_desc,
+			'facebookImage'       => $fb_image,
+			'facebookImageID'     => $fb_img_id,
+		];
 	}
 
 	/**
@@ -277,7 +308,7 @@ class Screen implements IScreen {
 
 		// Username, avatar & Name.
 		$twitter_username           = Helper::get_settings( 'titles.twitter_author_names' );
-		$data['twitterAuthor']      = $twitter_username ? $twitter_username : esc_html__( 'username', 'rank-math' );
+		$data['twitterAuthor']      = $twitter_username ? $twitter_username : esc_html__( 'username', 'seo-by-rank-math' );
 		$data['twitterUseFacebook'] = 'off' === $data['twitterUseFacebook'] ? false : true;
 		$data['facebookHasOverlay'] = empty( $data['facebookHasOverlay'] ) || 'off' === $data['facebookHasOverlay'] ? false : true;
 		$data['twitterHasOverlay']  = empty( $data['twitterHasOverlay'] ) || 'off' === $data['twitterHasOverlay'] ? false : true;

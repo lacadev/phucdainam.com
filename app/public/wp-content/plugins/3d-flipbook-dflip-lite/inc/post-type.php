@@ -128,6 +128,10 @@ class DFlip_Post_Type {
   }
   
   public function hidedflipRating() {
+    check_ajax_referer( 'dflip_hide_rating' );
+    if ( ! current_user_can( 'edit_posts' ) ) {
+      wp_send_json_error();
+    }
     update_option( 'dflip_showratingdiv', 'no' );
     wp_send_json_success();
     exit;
@@ -161,7 +165,7 @@ class DFlip_Post_Type {
     jQuery( document ).ready(function( $ ) {
 
     jQuery(\'.mashsbHideRating\').click(function(){
-        var data={\'action\':\'hidedflipRating\'}
+        var data={\'action\':\'hidedflipRating\',\'_ajax_nonce\':\'' . wp_create_nonce( 'dflip_hide_rating' ) . '\'}
              jQuery.ajax({
         
         url: "' . esc_url(admin_url( 'admin-ajax.php' )) . '",

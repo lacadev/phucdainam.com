@@ -160,7 +160,7 @@ class Metabox implements Runner {
 		if ( ! empty( $object_types ) ) {
 			add_meta_box(
 				$this->metabox_id,
-				esc_html__( 'Rank Math SEO', 'rank-math' ),
+				esc_html__( 'Rank Math SEO', 'seo-by-rank-math' ),
 				[ $this, 'render_main_metabox' ],
 				$object_types,
 				'normal',
@@ -200,7 +200,7 @@ class Metabox implements Runner {
 		?>
 		<div class="form-table rank-math-metabox-wrap rank-math-metabox-frame postbox">
 			<div id="setting-panel-container-<?php echo esc_attr( $this->metabox_id ); ?>" class="rank-math-sidebar-panel rank-math-tabs">
-				<h2 class="rank-math-metabox-frame-title"><?php esc_html_e( 'Rank Math SEO', 'rank-math' ); ?></h2>
+				<h2 class="rank-math-metabox-frame-title"><?php esc_html_e( 'Rank Math SEO', 'seo-by-rank-math' ); ?></h2>
 				<div id="rank-math-metabox-wrapper"></div>
 			</div>
 		</div>
@@ -211,6 +211,10 @@ class Metabox implements Runner {
 	 * Add link suggestion metabox.
 	 */
 	public function add_link_suggestion_metabox() {
+		if ( 'classic' !== Helper::get_current_editor() ) {
+			return;
+		}
+
 		$allowed_post_types = [];
 		foreach ( Helper::get_accessible_post_types() as $post_type ) {
 			if ( false === Helper::get_settings( 'titles.pt_' . $post_type . '_link_suggestions' ) ) {
@@ -227,7 +231,7 @@ class Metabox implements Runner {
 
 		add_meta_box(
 			$this->metabox_id . '_link_suggestions',
-			esc_html__( 'Link Suggestions', 'rank-math' ),
+			esc_html__( 'Link Suggestions', 'seo-by-rank-math' ),
 			[ $this, 'render_link_suggestion_metabox' ],
 			$allowed_post_types,
 			'side',
@@ -241,17 +245,7 @@ class Metabox implements Runner {
 	 * @param WP_Post $post Current post object.
 	 */
 	public function render_link_suggestion_metabox( $post ) {
-		echo '<div id="rank-math-link-suggestions-tooltip" class="hidden">';
-		echo wp_kses_post( Admin_Helper::get_tooltip( esc_html__( 'Click on the button to copy URL or insert link in content. You can also drag and drop links in the post content.', 'rank-math' ) ) );
-		echo '</div>';
-
-		$suggestions = rank_math()->admin->get_link_suggestions( $post );
-		if ( empty( $suggestions ) ) {
-			echo '<em><small>' . esc_html__( 'We can\'t show any link suggestions for this post. Try selecting categories and tags for this post, and mark other posts as Pillar Content to make them show up here.', 'rank-math' ) . '</small></em>';
-			return;
-		}
-
-		echo wp_kses_post( rank_math()->admin->get_link_suggestions_html( $suggestions ) );
+		echo '<div id="rank-math-link-suggestions-wrapper"></div>';
 	}
 
 	/**
@@ -386,7 +380,7 @@ class Metabox implements Runner {
 		?>
 		<div class="form-table rank-math-metabox-wrap rank-math-metabox-frame postbox">
 			<div id="setting-panel-container-<?php echo esc_attr( $this->metabox_id ); ?>" class="rank-math-sidebar-panel rank-math-tabs">
-				<h2 class="rank-math-metabox-frame-title"><?php esc_html_e( 'Rank Math SEO', 'rank-math' ); ?></h2>
+				<h2 class="rank-math-metabox-frame-title"><?php esc_html_e( 'Rank Math SEO', 'seo-by-rank-math' ); ?></h2>
 				<div id="rank-math-metabox-wrapper"></div>
 			</div>
 		</div>
@@ -448,8 +442,8 @@ class Metabox implements Runner {
 	 */
 	private function enqueue_translation() {
 		if ( function_exists( 'wp_set_script_translations' ) ) {
-			wp_set_script_translations( 'rank-math-analyzer', 'rank-math', rank_math()->plugin_dir() . 'languages/' );
-			wp_set_script_translations( 'rank-math-app', 'rank-math', rank_math()->plugin_dir() . 'languages/' );
+			wp_set_script_translations( 'rank-math-analyzer', 'seo-by-rank-math', rank_math()->plugin_dir() . 'languages/' );
+			wp_set_script_translations( 'rank-math-app', 'seo-by-rank-math', rank_math()->plugin_dir() . 'languages/' );
 		}
 	}
 

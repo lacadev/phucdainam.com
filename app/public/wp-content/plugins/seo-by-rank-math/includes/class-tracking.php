@@ -107,10 +107,6 @@ class Tracking {
 	 * @param string $state     The new state (on/off).
 	 */
 	public function track_module_option_change( $module_id, $state ): void {
-		if ( ! $this->is_opted_in() ) {
-			return;
-		}
-
 		$enable_module = $state === 'on';
 		$properties    = [
 			'context'        => 'wp_plugin',
@@ -181,6 +177,27 @@ class Tracking {
 		}
 
 		if ( ! Helper::is_block_editor() || ! Editor::can_add_editor() ) {
+			return;
+		}
+
+		$this->mixpanel->add_script();
+		Helper::add_json(
+			'tracking',
+			[
+				'plugin'   => $this->plugin,
+				'path'     => isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '',
+				'email'    => $this->user_email,
+				'language' => $this->user_language,
+			],
+		);
+	}
+
+	/**
+	 * Enqueue Mixpanel script and inject tracking data for non-block-editor admin pages.
+	 * Called by individual module admin classes that need JS-side event tracking.
+	 */
+	public function enqueue_mixpanel_for_page(): void {
+		if ( ! $this->optin->can_track() ) {
 			return;
 		}
 
@@ -311,20 +328,51 @@ class Tracking {
 	}
 
 	/**
+	 * Track a WordPress Abilities API execution event.
+	 *
+	 * MCP and direct calls share the same event name; the context property
+	 * differentiates them ('wp_plugin' vs 'wp_plugin_mcp').
+	 *
+	 * @param string $event_name       Mixpanel event name (e.g. 'SEO Audit Run').
+	 * @param array  $properties       Additional event properties (e.g. score, test_id).
+	 * @param string $event_capability WordPress capability required to execute the ability.
+	 */
+	public function track_ability_executed( string $event_name, array $properties = [], string $event_capability = '' ): void {
+		if ( ! $this->is_opted_in() ) {
+			return;
+		}
+
+		$context = ! empty( $_SERVER['HTTP_MCP_SESSION_ID'] ) ? 'wp_plugin_mcp' : 'wp_plugin'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+
+		$this->track_event(
+			$event_name,
+			array_merge( [ 'context' => $context ], $properties ),
+			$event_capability
+		);
+	}
+
+	/**
 	 * Track a custom event for Rank Math.
+	 *
+	 * Always enforces the usage-tracking opt-in — no-ops when the site
+	 * hasn't consented, regardless of caller.
 	 *
 	 * @param string $event            Event name.
 	 * @param array  $properties       Additional properties to merge.
 	 * @param string $event_capability The capability required to track the event.
 	 */
 	public function track_event( string $event, array $properties = [], string $event_capability = '' ): void {
+		if ( ! $this->is_opted_in() ) {
+			return;
+		}
+
 		$defaults = [
 			'context'  => 'wp_plugin',
 			'language' => $this->user_language,
 		];
 
 		$this->identify_user();
-		$this->mixpanel->track( $event, array_merge( $properties, $defaults ), $event_capability );
+		$this->mixpanel->track( $event, array_merge( $defaults, $properties ), $event_capability );
 	}
 
 	/**
