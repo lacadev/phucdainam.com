@@ -80,14 +80,13 @@
     // ── Step ──────────────────────────────────────────────────────────────
     &__step {
         position: relative;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
+        display: grid;
+        grid-template-rows: 1fr 1fr;
         gap: 10rem;
 
         @include maxWidth($xxl) {
-            display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            grid-template-rows: auto;
             align-items: flex-start;
             gap: 5rem;
         }
@@ -121,14 +120,22 @@
         }
 
         &--even {
-            flex-direction: column-reverse;
+            .journey-gallery__image {
+                grid-row: 1;
+            }
+
+            .journey-gallery__content {
+                grid-row: 2;
+            }
 
             @include maxWidth($xxl) {
                 .journey-gallery__content {
+                    grid-row: auto;
                     order: 2;
                 }
 
                 .journey-gallery__image {
+                    grid-row: auto;
                     order: 1;
                 }
             }
@@ -151,6 +158,7 @@
     &__content {
         display: flex;
         align-items: center;
+        align-self: start;
 
         @include maxWidth($xxl) {
             width: 100%;
@@ -212,6 +220,8 @@
 
     // ── Image ─────────────────────────────────────────────────────────────
     &__image {
+        align-self: start;
+
         @include maxWidth($xxl) {
             width: 100%;
             max-width: none;
