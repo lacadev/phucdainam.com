@@ -14,22 +14,26 @@ add_action('wp_ajax_user_login', 'mm_user_login');
  */
 function lacadev_get_social_driver_config()
 {
+    $default_redirect = admin_url('admin-ajax.php?action=google_admin_callback');
+
     // Phòng trường hợp Carbon Fields chưa sẵn sàng
     if (!function_exists('carbon_get_theme_option')) {
         return [
             'google' => [
                 'client_id'     => '',
                 'client_secret' => '',
-                'redirect'      => home_url('/wp-admin/admin-ajax.php?action=google_admin_callback'),
+                'redirect'      => $default_redirect,
             ],
         ];
     }
 
+    $redirect = carbon_get_theme_option('google_redirect_uri') ?: $default_redirect;
+
     return [
         'google' => [
-            'client_id'     => carbon_get_theme_option('google_client_id'),
-            'client_secret' => carbon_get_theme_option('google_client_secret'),
-            'redirect'      => home_url('/wp-admin/admin-ajax.php?action=google_admin_callback'),
+            'client_id'     => trim((string) carbon_get_theme_option('google_client_id')),
+            'client_secret' => trim((string) carbon_get_theme_option('google_client_secret')),
+            'redirect'      => $redirect,
         ],
     ];
 }
@@ -185,11 +189,15 @@ function socialCallbackRedirectUrl()
 {
     $user = wp_get_current_user();
 
+    // esc_js() cho user_email — giá trị này đến từ tài khoản Google (hoặc
+    // admin tự sửa tay), nối thẳng vào chuỗi JS không qua esc_js() trước
+    // đây có thể phá cú pháp hoặc chèn script tuỳ ý nếu email chứa ký tự "
+    // hay </script>.
     echo '<script>opener.socialLoginReturn({
                 success: true,
                 notification: {
-                    title: "' . __('Xin chào, ', 'laca') . $user->user_email . '", 
-                    message: "' . __('Chúc mừng bạn đã đăng nhập thành công', 'laca') . '"
+                    title: "' . esc_js(__('Xin chào, ', 'laca') . $user->user_email) . '",
+                    message: "' . esc_js(__('Chúc mừng bạn đã đăng nhập thành công', 'laca')) . '"
                 },
                 redirect: "/"
             });window.close();</script>';
@@ -197,6 +205,8 @@ function socialCallbackRedirectUrl()
 
 add_action('wp_ajax_nopriv_google_admin_callback', 'googleAdminCallback');
 add_action('wp_ajax_google_admin_callback', 'googleAdminCallback');
+add_action('wp_ajax_nopriv_social_login_callback', 'googleAdminCallback');
+add_action('wp_ajax_social_login_callback', 'googleAdminCallback');
 /**
  * Xử lý callback đăng nhập/đăng ký admin bằng Google
  */
@@ -239,8 +249,15 @@ function googleAdminCallback() {
  * Thêm nút đăng nhập Google vào trang login
  */
 add_action('login_form', function () {
-    // Lấy URL để bắt đầu quá trình đăng nhập Google
-    $google_login_url = admin_url('admin-ajax.php?action=google_login&redirect_to=' . urlencode(admin_url('admin-ajax.php?action=google_admin_callback')));
+    if (function_exists('carbon_get_theme_option')) {
+        if (!carbon_get_theme_option('enable_login_google') || !carbon_get_theme_option('google_client_id')) {
+            return;
+        }
+    }
+
+    $config = lacadev_get_social_driver_config();
+    $redirect_uri = $config['google']['redirect'] ?? admin_url('admin-ajax.php?action=social_login_callback&driver=google');
+    $google_login_url = admin_url('admin-ajax.php?action=google_login&redirect_to=' . urlencode($redirect_uri));
     ?>
     <div class="google-login-container">
         <a href="<?php echo esc_url($google_login_url); ?>" class="button google-login-button">

@@ -19,11 +19,22 @@ class AITranslationManager
         // Processing action (full post)
         add_action('admin_post_lacadev_ai_translate', [$this, 'handleAITranslateRequest']);
 
+        // Nút "Dịch cả bài bằng AI" trong khung Publish — trước đây action
+        // này được đăng ký nhưng KHÔNG có nút/link nào ở bất kỳ đâu gọi tới,
+        // tính năng chết hoàn toàn dù code xử lý đã viết xong.
+        add_action('post_submitbox_misc_actions', [$this, 'renderTranslateWholePostButton']);
+
         // AJAX: translate single block from Gutenberg Editor
         add_action('wp_ajax_lacadev_ai_translate_block', [$this, 'handleAjaxTranslateBlock']);
 
-        // Enqueue AI translate data into Gutenberg editor script
-        add_action('enqueue_block_editor_assets', [$this, 'localizeBlockEditorScript']);
+        // Enqueue AI translate data into Gutenberg editor script — priority
+        // 20 để CHẮC CHẮN chạy sau app_action_editor_enqueue_assets() (mục
+        // app/hooks.php, priority mặc định 10) — nơi đó mới thật sự
+        // wp_register_script('theme-editor-js-bundle', ...), còn hàm này chỉ
+        // wp_localize_script() lên handle đó. Thứ tự add_action() giữa 2
+        // file không đảm bảo chạy trước/sau nhau, nên phải ghim priority rõ
+        // ràng thay vì dựa vào thứ tự include tình cờ.
+        add_action('enqueue_block_editor_assets', [$this, 'localizeBlockEditorScript'], 20);
 
         // Admin Notices
         add_action('admin_notices', [$this, 'renderAdminNotices']);
@@ -46,17 +57,48 @@ class AITranslationManager
 
 
     /**
+     * In nút "Dịch cả bài bằng AI" trong khung Publish của màn hình edit
+     * post — link thật kèm nonce, trước đây hoàn toàn không tồn tại.
+     */
+    public function renderTranslateWholePostButton()
+    {
+        global $post;
+        if (!$post || !current_user_can('edit_post', $post->ID)) {
+            return;
+        }
+
+        $url = wp_nonce_url(
+            admin_url('admin-post.php?action=lacadev_ai_translate&post=' . $post->ID),
+            'lacadev_ai_translate_nonce'
+        );
+        ?>
+        <div class="misc-pub-section">
+            <a href="<?php echo esc_url($url); ?>"
+                class="button button-secondary"
+                style="width:100%;text-align:center;box-sizing:border-box;"
+                onclick="return confirm('<?php echo esc_js(__('Dịch toàn bộ tiêu đề/nội dung/SEO của bài viết này bằng AI? Nội dung hiện tại sẽ bị GHI ĐÈ.', 'laca')); ?>');">
+                ✨ <?php esc_html_e('Dịch cả bài bằng AI', 'laca'); ?>
+            </a>
+        </div>
+        <?php
+    }
+
+    /**
      * Handles the AJAX/POST request to translate a post.
      */
     public function handleAITranslateRequest()
     {
-        if (!isset($_GET['post']) || !current_user_can('edit_posts')) {
+        $post_id = absint($_GET['post'] ?? 0);
+        // "edit_post" (kiểm tra ĐÚNG bài viết này) thay vì "edit_posts"
+        // (quyền chung chung) — bug thật đã gặp: 1 Author chỉ được sửa bài
+        // của chính mình vẫn gọi được action này với ?post=<id bất kỳ> để
+        // ghi đè nội dung bài viết của NGƯỜI KHÁC, vì "edit_posts" chỉ kiểm
+        // tra "có được sửa bài NÀO ĐÓ không", không kiểm tra bài CỤ THỂ này.
+        if (!$post_id || !current_user_can('edit_post', $post_id)) {
             wp_die('Lỗi quyền truy cập!');
         }
 
         check_admin_referer('lacadev_ai_translate_nonce');
-
-        $post_id = absint($_GET['post']);
         
         // Detect target language from query or Polylang
         $target_lang = $this->detectTargetLanguage($post_id);
@@ -89,8 +131,13 @@ class AITranslationManager
     }
 
     /**
-     * Localizes AI translation data into the existing Gutenberg block editor script.
-     * Runs on enqueue_block_editor_assets so the data is available when index.js loads.
+     * Localizes AI translation data vào 'theme-editor-js-bundle' — bundle
+     * CHUNG luôn được enqueue trên mọi màn hình block editor (xem
+     * app_action_editor_enqueue_assets() trong app/hooks.php), khác với
+     * 'lacadev-gutenberg-blocks' (bundle LEGACY chỉ còn dùng cho vài block
+     * cũ chưa có build riêng) — dùng handle chung này để panel "Dịch bằng
+     * AI" (resources/scripts/editor/index.js) CHẮC CHẮN có mặt bất kể block
+     * nào đang được soạn thảo.
      */
     public function localizeBlockEditorScript()
     {
@@ -98,26 +145,28 @@ class AITranslationManager
             return;
         }
 
-        // Ensure the handle is registered/enqueued before localizing
-        if (!wp_script_is('lacadev-gutenberg-blocks', 'registered') &&
-            !wp_script_is('lacadev-gutenberg-blocks', 'enqueued')) {
-            wp_enqueue_script('lacadev-gutenberg-blocks');
-        }
+        // Ngôn ngữ dịch ĐẾN lấy thật từ Polylang (bỏ ngôn ngữ mặc định của
+        // site ra khỏi danh sách đích — dịch sang chính nó vô nghĩa). Site
+        // chỉ có 1 ngôn ngữ (hoặc tắt Polylang) → mảng rỗng, JS tự ẩn toàn
+        // bộ panel dịch.
+        $languages = \App\Helpers\PolylangLanguages::getActive();
+        $targetLangs = array_values(array_filter($languages, static fn($l) => empty($l['is_default'])));
 
-        wp_localize_script('lacadev-gutenberg-blocks', 'lacaAITranslate', [
+        wp_localize_script('theme-editor-js-bundle', 'lacaAITranslate', [
             'ajaxUrl' => admin_url('admin-ajax.php'),
             'nonce'   => wp_create_nonce('lacadev_ai_translate_block_nonce'),
-            'langs'   => [
-                ['value' => 'auto', 'label' => '🔍 Tự động nhận dạng'],
-                ['value' => 'vi',   'label' => '🇻🇳 Tiếng Việt'],
-                ['value' => 'en',   'label' => '🇺🇸 English'],
-                ['value' => 'ja',   'label' => '🇯🇵 日本語'],
-                ['value' => 'ko',   'label' => '🇰🇷 한국어'],
-                ['value' => 'fr',   'label' => '🇫🇷 Français'],
-                ['value' => 'zh',   'label' => '🇨🇳 中文'],
-                ['value' => 'de',   'label' => '🇩🇪 Deutsch'],
-                ['value' => 'es',   'label' => '🇪🇸 Español'],
-            ],
+            'langs'   => array_map(
+                static fn($l) => ['value' => $l['slug'], 'label' => $l['name']],
+                $targetLangs
+            ),
+            // Chỉ các block CUSTOM có ít nhất 1 attribute "translatable": true
+            // trong block.json — core text block (paragraph/heading...) đã
+            // dịch tốt qua nút "Dịch cả bài bằng AI" (xử lý cả innerHTML),
+            // panel theo từng block này chỉ cập nhật attributes nên cố ý
+            // không bật cho core block.
+            'translatableBlocks' => function_exists('lacadev_get_translatable_block_attrs')
+                ? array_keys(lacadev_get_translatable_block_attrs())
+                : [],
         ]);
     }
 

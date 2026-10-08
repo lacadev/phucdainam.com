@@ -33,6 +33,12 @@
         border-color: #dc3545;
         color: #721c24;
     }
+
+    &--warning {
+        background: #fff3cd;
+        border-color: #ffc107;
+        color: #856404;
+    }
 }
 
 .laca-cf-empty {
@@ -175,6 +181,23 @@
     line-height: 1.5;
 }
 
+// Trước đây chưa có style riêng — dùng mặc định của trình duyệt (không
+// khớp với nút Xoá bên cạnh, trông như 2 phong cách khác nhau).
+.lcf-duplicate-field-btn {
+    padding: 1px 7px;
+    flex-shrink: 0;
+    line-height: 1.5;
+    border: 1px solid #2271b1;
+    background: #fff;
+    color: #2271b1;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    white-space: nowrap;
+
+    &:hover { background: #e8f0fc; }
+}
+
 /* Column slots */
 .laca-cf-row-content {
     display: flex;
@@ -231,31 +254,54 @@
     padding: 8px 10px;
     border-top: 1px dashed #e0e0e0;
     display: flex;
-    gap: 5px;
+    align-items: stretch;
+    gap: 6px;
     background: #f5f5f5;
+
+    // select và button trước đây cùng khai báo height:26px nhưng <select>
+    // vẫn cao hơn button trên thực tế — do <select> mặc định box-sizing:
+    // content-box (border/padding CỘNG THÊM vào height thay vì nằm trong),
+    // trong khi <button> lại theo border-box — ép box-sizing giống nhau cho
+    // cả 2 mới thực sự bằng chiều cao.
+    select,
+    button {
+        box-sizing: border-box;
+        height: 40px;
+        font-size: 16px !important;
+        font-weight: 500 !important;
+    }
 
     select {
         flex: 1;
-        height: 26px;
-        font-size: 11px;
-        padding: 0 4px;
+        font-size: 12px;
+        padding: 0 8px;
         border: 1px solid #ccc;
-        border-radius: 3px;
+        border-radius: 4px;
     }
 
     button {
-        padding: 0 9px;
-        height: 26px;
-        font-size: 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 0 14px;
+        font-size: 12px;
         background: #2271b1;
         color: #fff;
         border: none;
-        border-radius: 3px;
+        border-radius: 4px;
         cursor: pointer;
         white-space: nowrap;
         font-weight: 600;
 
         &:hover { background: #1a5a9e; }
+    }
+
+    // Dấu "+" to hơn hẳn chữ "Field" bên cạnh — nhìn rõ đây là nút thêm mới,
+    // không bị lẫn với các nút/chữ khác trong hàng.
+    .lcf-add-field-plus {
+        font-size: 17px;
+        font-weight: 700;
+        line-height: 1;
     }
 }
 
@@ -317,6 +363,31 @@
     white-space: nowrap;
 }
 
+.lcf-badge-vis {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    white-space: nowrap;
+    line-height: 1.3;
+    vertical-align: middle;
+
+    &.is-shown {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1px solid #a7f3d0;
+    }
+
+    &.is-hidden {
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #cbd5e1;
+    }
+}
+
 .lcf-toggle-icon {
     color: #aaa;
     flex-shrink: 0;
@@ -339,6 +410,63 @@
     gap: 8px;
 }
 
+.lcf-input-grid {
+    display: grid;
+    gap: 10px;
+
+    &--70-30 {
+        grid-template-columns: 6.2fr 3.8fr;
+        align-items: end;
+
+        @media (max-width: 640px) {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+        }
+    }
+
+    &--50-50 {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+
+        @media (max-width: 640px) {
+            grid-template-columns: 1fr;
+        }
+    }
+}
+
+.lcf-checkbox-wrap {
+    display: flex;
+    align-items: center;
+    min-height: 30px;
+    padding-bottom: 3px;
+
+    &.lcf-checkboxes-col {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-end;
+        gap: 5px;
+        min-height: auto;
+        padding-bottom: 2px;
+    }
+}
+
+.lcf-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    user-select: none;
+    line-height: 1.3;
+
+    input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
+    }
+}
+
 .lcf-input-row {
     display: flex;
     flex-direction: column;
@@ -355,6 +483,97 @@
     margin: 2px 0 0;
     font-size: 11px;
     color: #999;
+}
+
+/* ── Field "content" — toolbar đậm/nghiêng/link ─────────────────────── */
+.lcf-content-toolbar {
+    display: flex;
+    gap: 6px;
+    margin: 4px 0 6px;
+
+    button {
+        padding: 4px 10px;
+        font-size: 12px;
+        border: 1px solid #ccc;
+        background: #fff;
+        border-radius: 3px;
+        cursor: pointer;
+
+        &:hover { background: #f0f0f1; }
+    }
+}
+
+/* ── Dịch sang ngôn ngữ khác (i18n) cho từng field ──────────────────── */
+.lcf-i18n-wrap {
+    margin-top: 10px;
+    border-top: 1px dashed #e0e0e0;
+    padding-top: 8px;
+}
+
+.lcf-i18n-toggle {
+    width: 100%;
+    text-align: left;
+    padding: 6px 8px;
+    border: 1px dashed #2271b1;
+    background: #f0f6fc;
+    color: #2271b1;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+
+    &:hover { background: #e8f0fc; }
+}
+
+.lcf-i18n-block {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 10px;
+    background: #fafbfc;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+}
+
+.lcf-i18n-wrap.is-open .lcf-i18n-block { display: flex; }
+
+.lcf-i18n-lang-group {
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.lcf-i18n-lang-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+
+    span {
+        font-size: 11px;
+        font-weight: 700;
+        color: #2271b1;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+}
+
+.lcf-i18n-ai-btn {
+    padding: 3px 9px;
+    border: 1px solid #8250df;
+    background: #faf5ff;
+    color: #8250df;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &:hover { background: #f3e8fd; }
+    &:disabled { opacity: 0.6; cursor: default; }
 }
 
 /* ── Add-row palette ──────────────────────────────────────────────── */
@@ -438,6 +657,276 @@
     font-family: monospace;
     font-size: 12px;
     resize: vertical;
+}
+
+/* ── Email Mode Switcher & Toolbars ────────────────────────────────── */
+.lcf-email-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+
+    .lcf-email-section-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+}
+
+.lcf-email-mode-toggle {
+    display: inline-flex;
+    background: #f1f5f9;
+    padding: 3px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    gap: 2px;
+
+    .lcf-mode-btn {
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 600;
+        border: none;
+        background: transparent;
+        color: #64748b;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+
+        &:hover {
+            color: #1e293b;
+        }
+
+        &.is-active {
+            background: #ffffff;
+            color: #0f172a;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+    }
+}
+
+.lcf-email-body-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+
+    .lcf-form-label {
+        margin-bottom: 0;
+    }
+}
+
+.lcf-email-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    button {
+        padding: 3px 8px;
+        font-size: 11px;
+        font-weight: 600;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        color: #334155;
+        cursor: pointer;
+        line-height: 1.4;
+        transition: all 0.15s ease;
+
+        &:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+            color: #0f172a;
+        }
+    }
+
+    .lcf-btn-allfields {
+        background: #f0fdf4;
+        border-color: #86efac;
+        color: #166534;
+
+        &:hover {
+            background: #dcfce7;
+            border-color: #4ade80;
+            color: #14532d;
+        }
+    }
+}
+
+.lcf-email-mode-hint {
+    margin: 6px 0 0;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.lcf-email-vars-box {
+    background: #f0f7ff;
+    border: 1px solid #cce3fd;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+
+    .lcf-email-vars-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed #cce3fd;
+
+        .lcf-email-vars-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1d2327;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .lcf-email-vars-tip {
+            font-size: 11px;
+            color: #646970;
+            font-style: italic;
+        }
+    }
+
+    .lcf-email-vars-section {
+        margin-bottom: 10px;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+
+        .lcf-email-vars-subhead {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #50575e;
+            margin-bottom: 6px;
+        }
+    }
+
+    .lcf-email-vars-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .lcf-email-vars-empty {
+        font-size: 12px;
+        color: #8c8f94;
+        font-style: italic;
+    }
+
+    .lcf-var-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #ffffff;
+        border: 1px solid #bfdbfe;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 12px;
+        line-height: 1.3;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        user-select: none;
+        outline: none;
+        color: #1d2327;
+        font-family: inherit;
+
+        code {
+            background: #e8f0fe;
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: #0b57d0;
+            font-weight: 700;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .lcf-var-label {
+            color: #50575e;
+            font-size: 11px;
+        }
+
+        &:hover {
+            background: #e8f4fd;
+            border-color: #2271b1;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 115, 170, 0.15);
+
+            code {
+                color: #005177;
+                background: #d4e8fc;
+            }
+        }
+
+        &:active {
+            transform: translateY(0);
+        }
+
+        &.is-copied {
+            background: #e7f8ea;
+            border-color: #46b450;
+            color: #106623;
+
+            code {
+                background: #cbf0d1;
+                color: #106623;
+            }
+
+            .lcf-var-label {
+                color: #106623;
+                font-weight: 600;
+            }
+        }
+
+        &.is-system {
+            background: #fbfbfb;
+            border-color: #dcdcde;
+
+            code {
+                background: #f0f0f1;
+                color: #50575e;
+            }
+
+            &:hover {
+                background: #f0f0f1;
+                border-color: #8c8f94;
+            }
+        }
+
+        &.is-all-fields {
+            background: #f0fdf4;
+            border-color: #86efac;
+
+            code {
+                background: #dcfce7;
+                color: #15803d;
+                font-weight: 800;
+            }
+
+            .lcf-var-badge {
+                color: #166534;
+                font-weight: 700;
+            }
+
+            &:hover {
+                background: #dcfce7;
+                border-color: #22c55e;
+                box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+            }
+        }
+    }
 }
 
 .laca-cf-var-hint {
@@ -694,6 +1183,14 @@
         outline: none;
         border-color: var(--lcf-primary, #2271b1) !important;
     }
+}
+
+.lcf-pv-content {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #444;
+
+    a { color: var(--lcf-primary, #2271b1); }
 }
 
 .lcf-pv-btn {

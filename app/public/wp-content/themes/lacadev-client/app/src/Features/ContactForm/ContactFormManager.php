@@ -3,6 +3,7 @@
 namespace App\Features\ContactForm;
 
 use App\Databases\ContactFormTable;
+use App\Settings\LacaTools\AITranslationHandler;
 
 /**
  * ContactFormManager
@@ -43,6 +44,10 @@ class ContactFormManager
         'datetime' => 'Ngày & Giờ (Datetime)',
         'url' => 'Đường dẫn (URL)',
         'hidden' => 'Ẩn (Hidden)',
+        // Không thu thập dữ liệu người dùng — chỉ để admin viết ghi chú/nội
+        // dung tĩnh chèn giữa các field (hỗ trợ in đậm/in nghiêng/link qua
+        // nút soạn thảo, xem contact-form.js buildFieldCard()).
+        'content' => 'Nội dung tĩnh (ghi chú, có thể gắn link)',
     ];
 
     /** Allowed column spans in 12-col grid */
@@ -55,9 +60,15 @@ class ContactFormManager
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
         add_action('admin_post_laca_cf_save', [$this, 'handleSave']);
         add_action('admin_post_laca_cf_delete', [$this, 'handleDelete']);
+        add_action('admin_post_laca_cf_duplicate', [$this, 'handleDuplicate']);
         add_action('admin_post_laca_cf_delete_submission', [$this, 'handleDeleteSubmission']);
         add_action('admin_post_laca_cf_mark_read', [$this, 'handleMarkRead']);
         add_action('admin_post_laca_cf_export_csv', [$this, 'handleExportCsv']);
+        add_action('admin_post_laca_cf_save_popup_defaults', [$this, 'handleSavePopupDefaults']);
+        // Nút "✨ Dịch bằng AI" trong khối "🌐 Dịch" của builder — tái dùng
+        // AITranslationHandler có sẵn (Laca Admin > AI Translation), KHÔNG
+        // phải tính năng dịch riêng mới. Gợi ý AI, admin vẫn sửa tay được.
+        add_action('wp_ajax_laca_cf_ai_translate_field', [$this, 'handleAjaxTranslateField']);
     }
 
     public function enqueueAssets(string $hook): void
@@ -71,14 +82,11 @@ class ContactFormManager
             return;
         }
 
-        $themeRoot = dirname(get_template_directory());
-        $themeRootUri = dirname(get_template_directory_uri());
-        $sortableFile = $themeRoot . '/node_modules/sortablejs/Sortable.min.js';
-        $sortableUrl = $themeRootUri . '/node_modules/sortablejs/Sortable.min.js';
-
-        if (file_exists($sortableFile)) {
-            wp_enqueue_script('sortablejs', $sortableUrl, [], '1.15.7', false);
-        }
+        // SortableJS giờ được bundle thẳng vào admin.js qua webpack (import
+        // thật trong resources/scripts/admin/contact-form.js) — KHÔNG enqueue
+        // riêng từ node_modules/sortablejs/Sortable.min.js nữa (file đó chưa
+        // từng được cài thật trong package.json nên luôn không tồn tại,
+        // khiến kéo/thả field trong trình tạo form im lặng không hoạt động).
     }
 
     // =========================================================================
@@ -149,18 +157,76 @@ class ContactFormManager
         }
         // Old flat format: first item has 'type' and no 'cols'
         if (isset($raw[0]['type']) && !isset($raw[0]['cols'])) {
-            return $raw;
+            return array_values(array_filter($raw, fn($f) => ($f['type'] ?? '') !== 'content'));
         }
         // New row-based format
         $fields = [];
         foreach ($raw as $row) {
             foreach ($row['cols'] ?? [] as $col) {
                 foreach ($col['fields'] ?? [] as $field) {
+                    // "content" là ghi chú tĩnh, không thu thập dữ liệu — bỏ
+                    // qua khi liệt kê field cho bảng submissions/CSV export.
+                    if (($field['type'] ?? '') === 'content') {
+                        continue;
+                    }
                     $fields[] = $field;
                 }
             }
         }
         return $fields;
+    }
+
+    /**
+     * Danh sách ngôn ngữ Polylang đang bật (chỉ trả về khi có >= 2 ngôn ngữ)
+     * để builder hiện tab "Dịch sang ngôn ngữ khác" cho từng field — form
+     * chỉ có 1 ngôn ngữ (hoặc Polylang tắt/chưa cấu hình) thì không cần dịch
+     * gì cả, JS sẽ tự ẩn toàn bộ UI dịch khi mảng này rỗng.
+     */
+    private static function getActiveLanguages(): array
+    {
+        return \App\Helpers\PolylangLanguages::getActive();
+    }
+
+    /**
+     * Sanitize bản dịch theo ngôn ngữ của 1 field (field['i18n'][lang] = [...]).
+     * $kind='content' chỉ giữ key "content" (field ghi chú tĩnh), $kind='field'
+     * giữ label/placeholder/other_label/options (field thu thập dữ liệu).
+     *
+     * "options" dịch giữ đúng SỐ LƯỢNG/THỨ TỰ của options gốc (dùng làm nhãn
+     * hiển thị theo index) — KHÔNG đổi giá trị submit thật, xem
+     * ContactFormAjaxHandler::applyFieldTranslation()/renderField().
+     */
+    private static function sanitizeFieldI18n($raw, string $kind): array
+    {
+        if (!is_array($raw)) {
+            return [];
+        }
+        $clean = [];
+        foreach ($raw as $langSlug => $vals) {
+            $langSlug = sanitize_key((string) $langSlug);
+            if (!$langSlug || !is_array($vals)) {
+                continue;
+            }
+            $entry = [];
+            if ($kind === 'content') {
+                if (isset($vals['content'])) {
+                    $entry['content'] = wp_kses_post($vals['content']);
+                }
+            } else {
+                foreach (['label', 'placeholder', 'other_label'] as $key) {
+                    if (isset($vals[$key]) && $vals[$key] !== '') {
+                        $entry[$key] = sanitize_text_field($vals[$key]);
+                    }
+                }
+                if (!empty($vals['options']) && is_array($vals['options'])) {
+                    $entry['options'] = array_map('sanitize_text_field', $vals['options']);
+                }
+            }
+            if (!empty($entry)) {
+                $clean[$langSlug] = $entry;
+            }
+        }
+        return $clean;
     }
 
     /**
@@ -253,66 +319,19 @@ class ContactFormManager
     }
 
     /**
-     * Default HTML email body gửi Admin
+     * Default email body gửi Admin (dạng văn bản chuẩn, tự bọc khung giao diện)
      */
     private static function defaultAdminEmailBody(): string
     {
-        return '<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:40px 20px;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#111111;line-height:1.6">
-  <div style="max-width:540px;margin:0 auto;border:1px solid #e5e5e5;padding:40px">
-    <div style="margin-bottom:30px">
-      <h1 style="margin:0 0 5px;font-size:20px;font-weight:600;letter-spacing:-0.5px">Thông báo liên hệ mới</h1>
-      <p style="margin:0;font-size:13px;color:#666666">$time - $date</p>
-    </div>
-    <div style="margin-bottom:30px;padding-bottom:30px;border-bottom:1px solid #eeeeee">
-      <p style="margin:0 0 10px;font-size:14px"><strong>Người gửi:</strong> $name</p>
-      <p style="margin:0 0 10px;font-size:14px"><strong>Số điện thoại:</strong> $phone_number</p>
-      <p style="margin:0;font-size:14px"><strong>Email:</strong> $email</p>
-    </div>
-    <div style="margin-bottom:40px">
-      <p style="margin:0 0 10px;font-size:12px;color:#888888;text-transform:uppercase;letter-spacing:0.5px">Nội dung</p>
-      <p style="margin:0;white-space:pre-wrap;font-size:15px;line-height:1.7;color:#333333">$message</p>
-    </div>
-    <div style="margin-top:40px;padding-top:20px;border-top:1px solid #eeeeee">
-      <p style="margin:0;font-size:12px;color:#999999">IP: $ip</p>
-    </div>
-  </div>
-</body>
-</html>';
+        return "Một liên hệ mới vừa được gửi qua website.\n\nDưới đây là thông tin chi tiết:\n\$all_fields\n\nIP người gửi: \$ip\nThời gian: \$time - \$date";
     }
 
     /**
-     * Default HTML email body xác nhận gửi Khách hàng
+     * Default email body xác nhận gửi Khách hàng
      */
     private static function defaultCustomerEmailBody(): string
     {
-        $siteName = get_bloginfo('name');
-        return '<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:40px 20px;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,Arial,sans-serif;color:#111111;line-height:1.6">
-  <div style="max-width:540px;margin:0 auto;border:1px solid #e5e5e5;padding:40px">
-    <div style="margin-bottom:30px">
-      <h1 style="margin:0 0 5px;font-size:20px;font-weight:600;letter-spacing:-0.5px">Đã nhận lời nhắn</h1>
-      <p style="margin:0;font-size:13px;color:#666666">Cảm ơn bạn đã liên hệ với ' . esc_html($siteName) . '</p>
-    </div>
-    <div style="margin-bottom:30px">
-      <p style="margin:0 0 15px;font-size:15px">Chào <strong>$name</strong>,</p>
-      <p style="margin:0;font-size:15px;color:#444444">Tôi đã nhận được tin nhắn cùng số điện thoại <strong>$phone_number</strong> của bạn.</p>
-      <p style="margin:10px 0 0;font-size:15px;color:#444444">Tôi sẽ xem xét và phản hồi trong vòng 24 giờ.</p>
-    </div>
-    <div style="margin-bottom:30px;padding:25px;background:#fafafa;border:1px solid #eeeeee">
-      <p style="margin:0 0 10px;font-size:12px;color:#888888;text-transform:uppercase;letter-spacing:0.5px">Tóm tắt nội dung</p>
-      <p style="margin:0;font-size:14px;color:#555555">"$message"</p>
-    </div>
-    <div style="margin-top:40px;padding-top:20px;border-top:1px solid #eeeeee">
-      <p style="margin:0;font-size:12px;color:#999999">Đây là email xác nhận tự động từ ' . esc_html($siteName) . '.</p>
-    </div>
-  </div>
-</body>
-</html>';
+        return "Chào bạn \$name,\n\nCảm ơn bạn đã liên hệ với chúng tôi! Chúng tôi đã nhận được thông tin và sẽ phản hồi trong thời gian sớm nhất.\n\nThông tin bạn đã gửi:\n\$all_fields\n\nTrân trọng!";
     }
 
     // =========================================================================
@@ -335,6 +354,36 @@ class ContactFormManager
                     + Tạo Form Mới
                 </a>
             </div>
+
+            <p>
+                <button type="button" class="button" onclick="var p=document.getElementById('popup-defaults-panel');p.hidden=!p.hidden;">
+                    ⚙️ Cài đặt Popup &amp; Thông báo chung <small style="font-weight:400">(mặc định cho mọi form — mỗi form có thể tự tuỳ chỉnh riêng ở tab "Giao diện")</small>
+                </button>
+            </p>
+            <div id="popup-defaults-panel" class="laca-cf-wrap" hidden style="background:#fff;border:1px solid #dcdcde;border-radius:6px;padding:16px;margin-bottom:16px">
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" id="popup-defaults-form">
+                    <?php wp_nonce_field(self::NONCE_ACTION, self::NONCE_FIELD); ?>
+                    <input type="hidden" name="action" value="laca_cf_save_popup_defaults">
+                    <input type="hidden" name="popup_json" id="popup-json-input" value="">
+                    <div class="lcf-style-grid">
+                        <?php
+                        echo ContactFormPopupSettings::renderFieldsHtml(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                        echo ContactFormPopupSettings::renderSystemMessagesHtml(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                        ?>
+                    </div>
+                    <p><button type="submit" class="button button-primary">Lưu cài đặt chung</button></p>
+                </form>
+            </div>
+            <script>
+                window.LacaCfPopupDefaultsVars = <?php echo wp_json_encode([
+                    'values' => ContactFormPopupSettings::getGlobal(),
+                    'languages' => self::getActiveLanguages(),
+                    'aiTranslate' => [
+                        'ajaxUrl' => admin_url('admin-ajax.php'),
+                        'nonce' => wp_create_nonce('laca_cf_ai_translate'),
+                    ],
+                ]); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>;
+            </script>
 
             <?php if ($message): ?>
                 <div class="laca-cf-notice laca-cf-notice--<?php echo esc_attr($message['type']); ?>">
@@ -403,6 +452,13 @@ class ContactFormManager
                                     <a href="<?php echo esc_url($editUrl); ?>" class="button button-small">Sửa</a>
                                     <a href="<?php echo esc_url($subsUrl); ?>" class="button button-small">Xem Submissions</a>
                                     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"
+                                          style="display:inline">
+                                        <?php wp_nonce_field(self::NONCE_ACTION, self::NONCE_FIELD); ?>
+                                        <input type="hidden" name="action" value="laca_cf_duplicate">
+                                        <input type="hidden" name="form_id" value="<?php echo esc_attr($formId); ?>">
+                                        <button type="submit" class="button button-small">Nhân bản</button>
+                                    </form>
+                                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>"
                                           style="display:inline"
                                           class="laca-cf-delete-form">
                                         <?php wp_nonce_field(self::NONCE_ACTION, self::NONCE_FIELD); ?>
@@ -430,6 +486,7 @@ class ContactFormManager
         $pageUrl = admin_url('admin.php?page=' . self::MENU_SLUG);
         $formId = $isNew ? 0 : (int) $form['id'];
         $rows = $isNew ? self::defaultFormRows() : self::toRowsFormat($form);
+        $languages = self::getActiveLanguages();
         $message = $this->getFlashMessage();
 
         $defaultAdminSubject = 'Liên hệ mới: [$name - $phone_number]';
@@ -488,10 +545,10 @@ class ContactFormManager
                                 </div>
                                 <div class="laca-cf-field-group">
                                     <label for="cf-notify-email" class="lcf-form-label">Email nhận thông báo</label>
-                                    <input type="email" id="cf-notify-email" name="notify_email" class="widefat"
+                                    <input type="text" id="cf-notify-email" name="notify_email" class="widefat"
                                            value="<?php echo esc_attr($form['notify_email'] ?? ''); ?>"
-                                           placeholder="Để trống = dùng <?php echo esc_attr(get_option('admin_email')); ?>">
-                                    <p class="description">Email admin nhận thông báo mỗi khi có submission mới.</p>
+                                           placeholder="VD: info@lixroastery.com, tuyendung@lixroastery.com">
+                                    <p class="description">Email admin nhận thông báo mỗi khi có submission mới (có thể nhập nhiều email, phân tách bằng dấu phẩy <code>,</code>). Để trống = dùng email quản trị (<?php echo esc_html(get_option('admin_email')); ?>).</p>
                                 </div>
                             </div>
                         </div>
@@ -526,6 +583,14 @@ class ContactFormManager
                                     <button type="button" class="lcf-add-row-btn" onclick="lcfAddRow('2-1')">
                                         <span class="lcf-row-preview lcf-rp-2-1"></span>2/3 + 1/3
                                     </button>
+                                </div>
+
+                                <div class="laca-cf-field-group" style="margin-top:20px">
+                                    <label class="lcf-form-label">Chữ nút Submit</label>
+                                    <input type="text" class="widefat" id="s-btn-text"
+                                           oninput="lcfStyleUpdate('btn_text',this.value)"
+                                           placeholder="Gửi thông tin">
+                                    <div id="btn-text-i18n-container"></div>
                                 </div>
                             </div>
                         </div>
@@ -592,23 +657,49 @@ class ContactFormManager
                                                oninput="lcfStyleUpdate('input_spacing',this.value)"
                                                placeholder="Ví dụ: 10px 14px">
                                     </div>
-                                    <div class="laca-cf-field-group" style="display:flex;align-items:center;">
-                                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;font-size:13px;margin-top:10px;">
-                                            <input type="checkbox" id="s-show-label" onchange="lcfStyleUpdate('show_label',this.checked)">
-                                            Hiển thị Label các trường
-                                        </label>
+                                    <div class="laca-cf-field-group">
+                                        <label class="lcf-form-label">Căn nút Submit</label>
+                                        <select class="widefat" id="s-submit-align" onchange="lcfStyleUpdate('submit_align',this.value)">
+                                            <option value="left">Trái</option>
+                                            <option value="center">Giữa</option>
+                                            <option value="right">Phải</option>
+                                            <option value="full">Toàn chiều rộng (100%)</option>
+                                        </select>
                                     </div>
-                                    <div class="laca-cf-field-group" style="grid-column:1/-1">
-                                        <label class="lcf-form-label">Chữ nút Submit</label>
-                                        <input type="text" class="widefat" id="s-btn-text"
-                                               oninput="lcfStyleUpdate('btn_text',this.value)"
-                                               placeholder="Gửi thông tin">
+                                    <div class="laca-cf-field-group">
+                                        <label class="lcf-form-label">Khoảng cách nút Submit (Margin Top)</label>
+                                        <div class="lcf-range-row">
+                                            <input type="range" min="0" max="100" id="s-submit-margin-top"
+                                                   oninput="lcfStyleUpdate('submit_margin_top',this.value);document.getElementById('s-submit-margin-top-num').value=this.value">
+                                            <input type="number" min="0" max="100" id="s-submit-margin-top-num" class="lcf-range-num"
+                                                   oninput="lcfStyleUpdate('submit_margin_top',this.value);document.getElementById('s-submit-margin-top').value=this.value">
+                                            <span class="lcf-range-unit">px</span>
+                                        </div>
+                                    </div>
+                                    <div class="laca-cf-field-group">
+                                        <label class="lcf-form-label">Độ rộng nút Submit</label>
+                                        <select class="widefat" id="s-submit-width" onchange="lcfStyleUpdate('submit_width',this.value)">
+                                            <option value="auto">Tự động (Vừa nội dung chữ)</option>
+                                            <option value="full">Toàn chiều rộng (100%)</option>
+                                        </select>
                                     </div>
                                     <div class="laca-cf-field-group" style="grid-column:1/-1">
                                         <label class="lcf-form-label">Custom CSS</label>
                                         <textarea class="widefat laca-cf-email-body" id="s-custom-css" rows="5"
                                                   oninput="lcfStyleUpdate('custom_css',this.value)"
                                                   placeholder="/* Nhập CSS tuỳ chỉnh...\n Dùng __FORM__ để ám chỉ class chứa form (ví dụ: __FORM__ .laca-cf-input { ... }) */"></textarea>
+                                    </div>
+
+                                    <div class="laca-cf-field-group" style="grid-column:1/-1">
+                                        <h3 class="lcf-email-section-title" style="margin:18px 0 4px">💬 Popup thông báo (Thành công / Thất bại)</h3>
+                                        <label class="lcf-checkbox-label" style="margin:0 0 10px">
+                                            <input type="checkbox" id="popup-override-toggle"
+                                                   onchange="lcfPopupOverrideToggle(this.checked)">
+                                            <span>Tuỳ chỉnh riêng cho form này <small style="font-weight:400">(bỏ tích = dùng Cài đặt Popup chung ở trang danh sách form)</small></span>
+                                        </label>
+                                    </div>
+                                    <div id="popup-fields-block" style="display:contents">
+                                        <?php echo ContactFormPopupSettings::renderFieldsHtml(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                                     </div>
                                 </div>
                             </div>
@@ -617,39 +708,77 @@ class ContactFormManager
                         <!-- Tab: Email -->
                         <div id="lcf-panel-emails" class="lcf-tab-panel">
                             <div class="lcf-panel-inner">
-                                <p class="description" style="margin-bottom:12px;color:#888">
-                                    Dùng <code>$tên_field</code> để chèn giá trị. Hỗ trợ HTML — preview hiển thị bên phải.
-                                </p>
-                                <div class="lcf-email-section">
-                                    <h3 class="lcf-email-section-title">Email Admin</h3>
-                                    <div class="laca-cf-field-group">
-                                        <label class="lcf-form-label">Tiêu đề (Subject)</label>
-                                        <input type="text" name="email_admin_subject" class="widefat"
-                                               value="<?php echo esc_attr($form['email_admin_subject'] ?? $defaultAdminSubject); ?>">
+                                <div class="lcf-email-vars-box" id="lcf-email-vars-container">
+                                    <div class="lcf-email-vars-head">
+                                        <div class="lcf-email-vars-title">
+                                            <span class="dashicons dashicons-tag" style="font-size:16px;line-height:1.2;width:16px;height:16px"></span>
+                                            <span>Biến có sẵn trong form:</span>
+                                        </div>
+                                        <span class="lcf-email-vars-tip">💡 Click vào biến để copy hoặc chèn nhanh vào ô đang nhập</span>
                                     </div>
-                                    <div class="laca-cf-field-group">
-                                        <label class="lcf-form-label">Nội dung (Body — hỗ trợ HTML)</label>
-                                        <textarea name="email_admin_body" id="email-admin-body" class="widefat laca-cf-email-body" rows="8"
-                                                  oninput="lcfUpdateEmailPreview('admin')"><?php echo esc_textarea($form['email_admin_body'] ?? $defaultAdminBody); ?></textarea>
-                                    </div>
-                                    <div class="laca-cf-var-hint">
-                                        <strong>Biến:</strong>
-                                        <code>$name</code> <code>$email</code> <code>$phone_number</code>
-                                        <code>$message</code> <code>$ip</code> <code>$date</code> <code>$time</code>
+                                    <div class="lcf-email-vars-content" id="lcf-email-vars-content">
+                                        <!-- Rendered dynamically by JS -->
                                     </div>
                                 </div>
-                                <div class="lcf-email-section" style="margin-top:20px">
-                                    <h3 class="lcf-email-section-title">Email Khách hàng</h3>
+
+                                <div class="lcf-email-section">
+                                    <div class="lcf-email-section-header">
+                                        <h3 class="lcf-email-section-title">Email Admin</h3>
+                                        <div class="lcf-email-mode-toggle" data-target="admin">
+                                            <button type="button" class="lcf-mode-btn is-active" data-mode="template" onclick="lcfSetEmailMode('admin','template',true)">📝 Mẫu chuẩn (Dễ dùng)</button>
+                                            <button type="button" class="lcf-mode-btn" data-mode="html" onclick="lcfSetEmailMode('admin','html',true)">💻 Code HTML</button>
+                                        </div>
+                                    </div>
+                                    <div class="laca-cf-field-group">
+                                        <label class="lcf-form-label">Tiêu đề (Subject)</label>
+                                        <input type="text" name="email_admin_subject" id="email-admin-subject" class="widefat laca-cf-email-input"
+                                               value="<?php echo esc_attr($form['email_admin_subject'] ?? $defaultAdminSubject); ?>"
+                                               oninput="lcfUpdateEmailPreview('admin')">
+                                    </div>
+                                    <div class="laca-cf-field-group">
+                                        <div class="lcf-email-body-label-row">
+                                            <label class="lcf-form-label" id="label-email-admin-body">Nội dung thư</label>
+                                            <div class="lcf-email-toolbar" id="toolbar-email-admin">
+                                                <button type="button" onclick="lcfEmailWrap('email-admin-body','strong')" title="In đậm"><strong>B</strong></button>
+                                                <button type="button" onclick="lcfEmailWrap('email-admin-body','em')" title="In nghiêng"><em>I</em></button>
+                                                <button type="button" onclick="lcfEmailInsertLink('email-admin-body')" title="Chèn link">🔗 Link</button>
+                                                <button type="button" class="lcf-btn-allfields" onclick="lcfEmailInsertVar('email-admin-body','$all_fields')" title="Chèn toàn bộ thông tin form">+ Bảng thông tin ($all_fields)</button>
+                                            </div>
+                                        </div>
+                                        <textarea name="email_admin_body" id="email-admin-body" class="widefat laca-cf-email-body laca-cf-email-input" rows="8"
+                                                  oninput="lcfUpdateEmailPreview('admin')"><?php echo esc_textarea($form['email_admin_body'] ?? $defaultAdminBody); ?></textarea>
+                                        <p class="lcf-email-mode-hint" id="hint-email-admin">💡 <em>Chế độ Mẫu chuẩn: Nội dung sẽ tự động được bọc trong khung email đẹp mắt kèm màu sắc thương hiệu và bảng tóm tắt form.</em></p>
+                                    </div>
+                                </div>
+                                <div class="lcf-email-section" style="margin-top:24px">
+                                    <div class="lcf-email-section-header">
+                                        <h3 class="lcf-email-section-title">Email Khách hàng</h3>
+                                        <div class="lcf-email-mode-toggle" data-target="customer">
+                                            <button type="button" class="lcf-mode-btn is-active" data-mode="template" onclick="lcfSetEmailMode('customer','template',true)">📝 Mẫu chuẩn (Dễ dùng)</button>
+                                            <button type="button" class="lcf-mode-btn" data-mode="html" onclick="lcfSetEmailMode('customer','html',true)">💻 Code HTML</button>
+                                        </div>
+                                    </div>
                                     <div class="laca-cf-field-group">
                                         <label class="lcf-form-label">Tiêu đề (Subject) — để trống = không gửi</label>
-                                        <input type="text" name="email_customer_subject" class="widefat"
-                                               value="<?php echo esc_attr($form['email_customer_subject'] ?? $defaultCustomerSubject); ?>">
+                                        <input type="text" name="email_customer_subject" id="email-customer-subject" class="widefat laca-cf-email-input"
+                                               value="<?php echo esc_attr($form['email_customer_subject'] ?? $defaultCustomerSubject); ?>"
+                                               oninput="lcfUpdateEmailPreview('customer')">
                                     </div>
                                     <div class="laca-cf-field-group">
-                                        <label class="lcf-form-label">Nội dung (Body — hỗ trợ HTML)</label>
-                                        <textarea name="email_customer_body" id="email-customer-body" class="widefat laca-cf-email-body" rows="6"
+                                        <div class="lcf-email-body-label-row">
+                                            <label class="lcf-form-label" id="label-email-customer-body">Nội dung thư</label>
+                                            <div class="lcf-email-toolbar" id="toolbar-email-customer">
+                                                <button type="button" onclick="lcfEmailWrap('email-customer-body','strong')" title="In đậm"><strong>B</strong></button>
+                                                <button type="button" onclick="lcfEmailWrap('email-customer-body','em')" title="In nghiêng"><em>I</em></button>
+                                                <button type="button" onclick="lcfEmailInsertLink('email-customer-body')" title="Chèn link">🔗 Link</button>
+                                                <button type="button" class="lcf-btn-allfields" onclick="lcfEmailInsertVar('email-customer-body','$all_fields')" title="Chèn toàn bộ thông tin form">+ Bảng thông tin ($all_fields)</button>
+                                            </div>
+                                        </div>
+                                        <textarea name="email_customer_body" id="email-customer-body" class="widefat laca-cf-email-body laca-cf-email-input" rows="6"
                                                   oninput="lcfUpdateEmailPreview('customer')"><?php echo esc_textarea($form['email_customer_body'] ?? $defaultCustomerBody); ?></textarea>
+                                        <p class="lcf-email-mode-hint" id="hint-email-customer">💡 <em>Chế độ Mẫu chuẩn: Nội dung sẽ tự động được bọc trong khung email đẹp mắt gửi đến người liên hệ.</em></p>
                                     </div>
+                                    <div id="email-customer-i18n-container"></div>
                                 </div>
                             </div>
                         </div>
@@ -690,8 +819,22 @@ class ContactFormManager
 
         <script>
             window.LacaContactFormVars = {
+                siteName: <?php echo wp_json_encode(get_bloginfo('name')); ?>,
+                <?php
+                // Logo Theme Options > Branding — để preview email trong
+                // builder khớp với email thật (xem
+                // ContactFormEmailService::wrapInEmailTemplate()).
+                $lcfLogoId = function_exists('carbon_get_theme_option') ? (int) carbon_get_theme_option('logo') : 0;
+                $lcfLogoUrl = $lcfLogoId ? wp_get_attachment_image_url($lcfLogoId, 'medium') : '';
+                ?>
+                logoUrl: <?php echo wp_json_encode($lcfLogoUrl ?: ''); ?>,
                 FIELD_TYPES: <?php echo wp_json_encode(self::FIELD_TYPES); ?>,
-                rows: <?php echo wp_json_encode($rows); ?>
+                rows: <?php echo wp_json_encode($rows); ?>,
+                languages: <?php echo wp_json_encode($languages); ?>,
+                aiTranslate: {
+                    ajaxUrl: <?php echo wp_json_encode(admin_url('admin-ajax.php')); ?>,
+                    nonce: <?php echo wp_json_encode(wp_create_nonce('laca_cf_ai_translate')); ?>
+                }
             };
         </script>
         <?php
@@ -847,17 +990,60 @@ class ContactFormManager
             foreach ($row['cols'] as $col) {
                 $cleanFields = [];
                 foreach ($col['fields'] ?? [] as $field) {
-                    if (empty($field['name']) || empty($field['label'])) {
+                    $type = in_array($field['type'] ?? '', array_keys(self::FIELD_TYPES), true) ? $field['type'] : 'text';
+
+                    // "content" là ghi chú tĩnh (không thu thập dữ liệu) nên
+                    // không cần "name" — mọi field còn lại vẫn bắt buộc phải
+                    // có "name" vì đó là key dữ liệu khi submit/email.
+                    if ($type === 'content') {
+                        $cleanFields[] = [
+                            'id' => sanitize_key($field['id'] ?? uniqid('field_', true)),
+                            'type' => 'content',
+                            'content' => wp_kses_post($field['content'] ?? ''),
+                            // (object) ép buộc json_encode() ra "{}" thay vì
+                            // "[]" khi rỗng — PHP không phân biệt được mảng
+                            // kết hợp rỗng với mảng số rỗng, json_encode([])
+                            // LUÔN LUÔN ra "[]". Phía JS đọc "[]" thành một
+                            // JAVASCRIPT ARRAY thay vì object; gán thuộc tính
+                            // string (vd field.i18n.en = {...}) lên ARRAY vẫn
+                            // "thành công" (đọc lại thấy đúng) nhưng
+                            // JSON.stringify() trên array CHỈ xuất phần tử số,
+                            // ÂM THẦM bỏ qua thuộc tính string — khiến field
+                            // MỚI dịch lần đầu (i18n rỗng từ đầu) luôn mất bản
+                            // dịch ngay khi lưu, trong khi field đã có sẵn
+                            // i18n (khác rỗng, vốn dĩ đã là object đúng) thì
+                            // không bị ảnh hưởng.
+                            'i18n' => (object) self::sanitizeFieldI18n($field['i18n'] ?? [], 'content'),
+                        ];
+                        continue;
+                    }
+
+                    // Label KHÔNG bắt buộc — nhiều field chỉ dùng placeholder
+                    // làm gợi ý hiển thị (label vẫn được render cho screen
+                    // reader/email nhưng có thể để trống). Chỉ "name" (dùng
+                    // làm key dữ liệu) mới thực sự bắt buộc.
+                    if (empty($field['name'])) {
                         continue;
                     }
                     $cleanFields[] = [
                         'id' => sanitize_key($field['id'] ?? uniqid('field_', true)),
-                        'type' => in_array($field['type'], array_keys(self::FIELD_TYPES), true) ? $field['type'] : 'text',
+                        'type' => $type,
                         'name' => sanitize_key($field['name']),
-                        'label' => sanitize_text_field($field['label']),
+                        'label' => sanitize_text_field($field['label'] ?? ''),
                         'placeholder' => sanitize_text_field($field['placeholder'] ?? ''),
                         'required' => !empty($field['required']),
+                        'show_label' => !empty($field['show_label']),
                         'options' => array_map('sanitize_text_field', (array) ($field['options'] ?? [])),
+                        'has_other' => !empty($field['has_other']),
+                        'other_label' => sanitize_text_field($field['other_label'] ?? ''),
+                        // Chỉ áp dụng thật khi type=checkbox có >=2 option —
+                        // xem ContactFormAjaxHandler::renderField(). Field
+                        // type khác/option <2 vẫn lưu cờ này vô hại.
+                        'single_choice' => !empty($field['single_choice']),
+                        // (object) ép json_encode() ra "{}" thay vì "[]" khi
+                        // rỗng — xem giải thích đầy đủ ở nhánh 'content' phía
+                        // trên (cùng 1 nguyên nhân gây mất bản dịch field mới).
+                        'i18n' => (object) self::sanitizeFieldI18n($field['i18n'] ?? [], 'field'),
                     ];
                 }
                 $span = (int) ($col['span'] ?? 12);
@@ -876,7 +1062,15 @@ class ContactFormManager
         // Parse + sanitize style_json
         $styleJson = stripslashes($_POST['style_json'] ?? '{}');
         $rawStyle = json_decode($styleJson, true) ?: [];
-        $cleanStyle = [];
+        // Toàn bộ key popup_*/msg_* (nội dung + hành vi popup Thành công/
+        // Thất bại) đi qua ContactFormPopupSettings::sanitize() DÙNG CHUNG
+        // với panel cài đặt global ở trang danh sách — tránh trùng lặp logic
+        // sanitize (xem class đó để biết đầy đủ schema). $withSystemMessages
+        // = false vì msg_* CHỈ cấu hình được ở global, form riêng không có
+        // quyền "khoá" nhầm thông báo hệ thống của site.
+        $cleanStyle = ContactFormPopupSettings::sanitize($rawStyle, false);
+        $cleanStyle['popup_override'] = !empty($rawStyle['popup_override']);
+
         foreach (['primary_color', 'secondary_color', 'input_border_color', 'label_color'] as $colorKey) {
             if (!empty($rawStyle[$colorKey])) {
                 $hex = sanitize_hex_color($rawStyle[$colorKey]);
@@ -893,21 +1087,76 @@ class ContactFormManager
         if (!empty($rawStyle['btn_text'])) {
             $cleanStyle['btn_text'] = sanitize_text_field($rawStyle['btn_text']);
         }
+        if (!empty($rawStyle['btn_text_i18n']) && is_array($rawStyle['btn_text_i18n'])) {
+            $cleanBtnI18n = [];
+            foreach ($rawStyle['btn_text_i18n'] as $langSlug => $btnVal) {
+                $langSlug = sanitize_key((string) $langSlug);
+                $btnVal = sanitize_text_field((string) $btnVal);
+                if ($langSlug && $btnVal !== '') {
+                    $cleanBtnI18n[$langSlug] = $btnVal;
+                }
+            }
+            if (!empty($cleanBtnI18n)) {
+                $cleanStyle['btn_text_i18n'] = $cleanBtnI18n;
+            }
+        }
+        if (!empty($rawStyle['email_customer_i18n']) && is_array($rawStyle['email_customer_i18n'])) {
+            $cleanEmailI18n = [];
+            foreach ($rawStyle['email_customer_i18n'] as $langSlug => $emailData) {
+                $langSlug = sanitize_key((string) $langSlug);
+                if (!$langSlug || !is_array($emailData)) {
+                    continue;
+                }
+                $entry = [];
+                if (isset($emailData['subject']) && trim((string) $emailData['subject']) !== '') {
+                    $entry['subject'] = sanitize_text_field($emailData['subject']);
+                }
+                if (isset($emailData['body']) && trim((string) $emailData['body']) !== '') {
+                    $entry['body'] = wp_kses_post(stripslashes($emailData['body']));
+                }
+                if (!empty($entry)) {
+                    $cleanEmailI18n[$langSlug] = $entry;
+                }
+            }
+            if (!empty($cleanEmailI18n)) {
+                $cleanStyle['email_customer_i18n'] = $cleanEmailI18n;
+            }
+        }
+        if (!empty($rawStyle['email_admin_mode']) && in_array($rawStyle['email_admin_mode'], ['template', 'html'], true)) {
+            $cleanStyle['email_admin_mode'] = $rawStyle['email_admin_mode'];
+        }
+        if (!empty($rawStyle['email_customer_mode']) && in_array($rawStyle['email_customer_mode'], ['template', 'html'], true)) {
+            $cleanStyle['email_customer_mode'] = $rawStyle['email_customer_mode'];
+        }
         if (!empty($rawStyle['input_spacing'])) {
             $cleanStyle['input_spacing'] = sanitize_text_field($rawStyle['input_spacing']);
         }
-        if (isset($rawStyle['hide_labels'])) {
-            $cleanStyle['hide_labels'] = (bool) $rawStyle['hide_labels'];
+        // Sửa lại đúng key "show_label" — JS gửi lên và buildScopedCss() đọc
+        // đều dùng "show_label", trước đây code này sanitize nhầm sang key
+        // "hide_labels" nên cài đặt "Hiển thị Label các trường" luôn bị mất
+        // khi lưu (không lỗi rõ ràng, chỉ âm thầm không có tác dụng).
+        if (isset($rawStyle['show_label'])) {
+            $cleanStyle['show_label'] = (bool) $rawStyle['show_label'];
+        }
+        if (in_array($rawStyle['submit_align'] ?? '', ['left', 'center', 'right', 'full'], true)) {
+            $cleanStyle['submit_align'] = $rawStyle['submit_align'];
+        }
+        if (in_array($rawStyle['submit_width'] ?? '', ['auto', 'full'], true)) {
+            $cleanStyle['submit_width'] = $rawStyle['submit_width'];
+        }
+        if (isset($rawStyle['submit_margin_top'])) {
+            $cleanStyle['submit_margin_top'] = max(0, min(200, (int) $rawStyle['submit_margin_top']));
         }
         if (!empty($rawStyle['custom_css'])) {
             // Strip tags but allow proper CSS syntax, wp_strip_all_tags handles basic sanitization
             $cleanStyle['custom_css'] = wp_strip_all_tags(stripslashes($rawStyle['custom_css']));
         }
 
+        $invalidEmails = [];
         $data = [
             'name' => $formName,
             'fields' => $cleanRows,
-            'notify_email' => sanitize_email($_POST['notify_email'] ?? ''),
+            'notify_email' => ContactFormTable::sanitizeEmailList($_POST['notify_email'] ?? '', $invalidEmails),
             'email_admin_subject' => sanitize_text_field($_POST['email_admin_subject'] ?? ''),
             'email_admin_body' => wp_kses_post(stripslashes($_POST['email_admin_body'] ?? '')),
             'email_customer_subject' => sanitize_text_field($_POST['email_customer_subject'] ?? ''),
@@ -922,7 +1171,35 @@ class ContactFormManager
             $redirectId = ContactFormTable::insertForm($data);
         }
 
+        // Có email sai định dạng bị loại bỏ khỏi "Email nhận thông báo" —
+        // vẫn lưu form bình thường (không chặn save) nhưng cảnh báo rõ cho
+        // admin biết, thay vì âm thầm bớt người nhận.
+        if (!empty($invalidEmails)) {
+            $url = $this->buildRedirectUrl($redirectId, 'saved_invalid_email')
+                . '&laca_bad_emails=' . rawurlencode(implode(', ', $invalidEmails));
+            wp_redirect($url);
+            exit;
+        }
+
         wp_redirect($this->buildRedirectUrl($redirectId, 'saved'));
+        exit;
+    }
+
+    /**
+     * Lưu cài đặt Popup & Thông báo CHUNG (áp dụng mặc định cho mọi form
+     * trừ khi form tự bật popup_override) — panel ở trang danh sách form.
+     */
+    public function handleSavePopupDefaults(): void
+    {
+        if (!current_user_can(self::CAP)) {
+            wp_die(esc_html__('Không có quyền.', 'laca'));
+        }
+        check_admin_referer(self::NONCE_ACTION, self::NONCE_FIELD);
+
+        $raw = json_decode(stripslashes($_POST['popup_json'] ?? '{}'), true) ?: [];
+        ContactFormPopupSettings::saveGlobal($raw);
+
+        wp_redirect(admin_url('admin.php?page=' . self::MENU_SLUG . '&laca_msg=popup_saved'));
         exit;
     }
 
@@ -940,6 +1217,126 @@ class ContactFormManager
 
         wp_redirect(admin_url('admin.php?page=' . self::MENU_SLUG . '&laca_msg=deleted'));
         exit;
+    }
+
+    public function handleDuplicate(): void
+    {
+        if (!current_user_can(self::CAP)) {
+            wp_die(esc_html__('Không có quyền.', 'laca'));
+        }
+        check_admin_referer(self::NONCE_ACTION, self::NONCE_FIELD);
+
+        $formId = absint($_POST['form_id'] ?? 0);
+        $source = $formId > 0 ? ContactFormTable::getForm($formId) : null;
+
+        if (!$source) {
+            wp_redirect(admin_url('admin.php?page=' . self::MENU_SLUG));
+            exit;
+        }
+
+        $data = [
+            'name' => $source['name'] . ' (Copy)',
+            'fields' => json_decode($source['fields'] ?? '[]', true) ?: [],
+            'notify_email' => $source['notify_email'],
+            'email_admin_subject' => $source['email_admin_subject'],
+            'email_admin_body' => $source['email_admin_body'],
+            'email_customer_subject' => $source['email_customer_subject'],
+            'email_customer_body' => $source['email_customer_body'],
+            'style_settings' => json_decode($source['style_settings'] ?? '{}', true) ?: [],
+        ];
+
+        $newId = ContactFormTable::insertForm($data);
+
+        wp_redirect($this->buildRedirectUrl($newId, 'duplicated'));
+        exit;
+    }
+
+    /**
+     * AJAX: dịch label/placeholder/other_label/content/options của 1 field
+     * sang ngôn ngữ đích bằng AI (tái dùng AITranslationHandler có sẵn ở
+     * Laca Admin > AI Translation — cùng API key/provider dùng để dịch bài
+     * viết). Chỉ trả về gợi ý, admin bấm nút mới gọi và vẫn sửa tay được
+     * sau đó — không tự động ghi đè khi lưu form.
+     */
+    public function handleAjaxTranslateField(): void
+    {
+        check_ajax_referer('laca_cf_ai_translate', 'nonce');
+
+        if (!current_user_can(self::CAP)) {
+            wp_send_json_error(['message' => 'Không có quyền thực hiện thao tác này.']);
+        }
+
+        $targetLang = sanitize_text_field($_POST['target_lang'] ?? '');
+        if (!$targetLang) {
+            wp_send_json_error(['message' => 'Thiếu ngôn ngữ đích.']);
+        }
+
+        $handler = new AITranslationHandler();
+        $result = [];
+
+        $popupTranslateKeys = [
+            'label', 'placeholder', 'other_label', 'content', 'btn_text',
+            'email_customer_subject', 'email_customer_body',
+            'popup_success_title', 'popup_success_desc', 'popup_error_title', 'popup_error_desc',
+            'popup_close_text',
+            'msg_session_expired', 'msg_invalid_form', 'msg_form_not_found',
+            'msg_field_required_suffix', 'msg_invalid_email_suffix', 'msg_invalid_url_suffix',
+            'msg_invalid_phone_suffix', 'msg_technical_error', 'msg_email_failed', 'msg_network_error',
+            'msg_submitting_text',
+        ];
+        foreach ($popupTranslateKeys as $key) {
+            $text = trim((string) ($_POST[$key] ?? ''));
+            if ($text === '') {
+                continue;
+            }
+            $context = match($key) {
+                'email_customer_subject' => 'Tiêu đề email xác nhận gửi tới khách hàng sau khi điền form liên hệ',
+                'email_customer_body' => 'Nội dung email HTML xác nhận gửi tới khách hàng sau khi điền form liên hệ. Giữ nguyên toàn bộ cấu trúc HTML, thẻ style và các tên biến bắt đầu bằng dấu $ như $name, $phone_number, $date, $time, $ip',
+                'btn_text' => 'Chữ trên nút gửi (Submit button) của form liên hệ',
+                'popup_success_title' => 'Tiêu đề popup hiện ra khi khách gửi form liên hệ THÀNH CÔNG',
+                'popup_success_desc' => 'Mô tả ngắn trong popup khi khách gửi form liên hệ THÀNH CÔNG',
+                'popup_error_title' => 'Tiêu đề popup hiện ra khi khách gửi form liên hệ THẤT BẠI',
+                'popup_error_desc' => 'Mô tả ngắn mặc định trong popup khi khách gửi form liên hệ THẤT BẠI',
+                'popup_close_text' => 'Chữ trên nút đóng popup thông báo của form liên hệ',
+                'msg_session_expired' => 'Thông báo lỗi khi phiên làm việc (nonce) hết hạn lúc gửi form liên hệ',
+                'msg_invalid_form' => 'Thông báo lỗi khi ID form liên hệ không hợp lệ',
+                'msg_form_not_found' => 'Thông báo lỗi khi form liên hệ không tồn tại',
+                'msg_field_required_suffix' => 'Cụm từ nối sau tên field báo field đó bắt buộc nhập (vd "Email là bắt buộc.")',
+                'msg_invalid_email_suffix' => 'Thông báo lỗi khi email nhập sai định dạng',
+                'msg_invalid_url_suffix' => 'Thông báo lỗi khi đường dẫn URL nhập sai định dạng',
+                'msg_invalid_phone_suffix' => 'Thông báo lỗi khi số điện thoại nhập sai định dạng',
+                'msg_technical_error' => 'Thông báo khi hệ thống lỗi kỹ thuật lúc lưu/gửi email nhưng dữ liệu khách gửi vẫn đã được lưu lại',
+                'msg_email_failed' => 'Thông báo khi gửi email xác nhận thất bại nhưng dữ liệu khách gửi vẫn đã được lưu lại',
+                'msg_network_error' => 'Thông báo khi trình duyệt khách mất kết nối mạng lúc gửi form liên hệ',
+                'msg_submitting_text' => 'Chữ hiện trên nút Submit của form liên hệ trong lúc đang gửi (vd "Đang gửi...")',
+                default => 'Nhãn/nội dung 1 field trong form liên hệ trên website',
+            };
+            $translated = $handler->translateText($text, $targetLang, $context);
+            if (is_wp_error($translated)) {
+                wp_send_json_error(['message' => $translated->get_error_message()]);
+            }
+            $result[$key] = $translated;
+        }
+
+        $rawOptions = json_decode(stripslashes($_POST['options'] ?? '[]'), true);
+        if (is_array($rawOptions) && !empty($rawOptions)) {
+            $translatedOptions = [];
+            foreach ($rawOptions as $opt) {
+                $opt = trim((string) $opt);
+                if ($opt === '') {
+                    $translatedOptions[] = '';
+                    continue;
+                }
+                $translated = $handler->translateText($opt, $targetLang, 'Một lựa chọn (option) của field checkbox/radio/select trong form liên hệ');
+                if (is_wp_error($translated)) {
+                    wp_send_json_error(['message' => $translated->get_error_message()]);
+                }
+                $translatedOptions[] = $translated;
+            }
+            $result['options'] = $translatedOptions;
+        }
+
+        wp_send_json_success($result);
     }
 
     public function handleDeleteSubmission(): void
@@ -1021,13 +1418,30 @@ class ContactFormManager
             ];
             foreach ($fields as $field) {
                 $val = $data[$field['name']] ?? '';
-                $row[] = is_array($val) ? implode(', ', $val) : $val;
+                $row[] = self::sanitizeCsvCell(is_array($val) ? implode(', ', $val) : $val);
             }
             fputcsv($out, $row);
         }
 
         fclose($out);
         exit;
+    }
+
+    /**
+     * Chống CSV/Formula Injection: giá trị submission là dữ liệu NHẬP TỰ DO
+     * từ khách (không qua kiểm soát nội dung) — nếu bắt đầu bằng = + - @
+     * (hoặc tab/CR), Excel/Google Sheets có thể hiểu thành công thức và tự
+     * thực thi khi admin mở file (vd =HYPERLINK(...), =cmd|'/c ...'!A1).
+     * Thêm tiền tố nháy đơn để ép hiển thị như text thuần, vô hiệu hoá công
+     * thức — theo đúng khuyến nghị OWASP CSV Injection.
+     */
+    private static function sanitizeCsvCell($value): string
+    {
+        $value = (string) $value;
+        if ($value !== '' && preg_match('/^[=+\-@\t\r]/', $value)) {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     // =========================================================================
@@ -1046,11 +1460,24 @@ class ContactFormManager
     private function getFlashMessage(): ?array
     {
         $msg = sanitize_key($_GET['laca_msg'] ?? '');
+
+        // Nội dung động (kèm danh sách email sai) — không đưa vào $map tĩnh
+        // bên dưới vì text phụ thuộc query param laca_bad_emails.
+        if ($msg === 'saved_invalid_email') {
+            $bad = sanitize_text_field(wp_unslash($_GET['laca_bad_emails'] ?? ''));
+            return [
+                'type' => 'warning',
+                'text' => 'Đã lưu form, nhưng các email sau sai định dạng nên đã bị bỏ qua ở mục "Email nhận thông báo": ' . $bad,
+            ];
+        }
+
         $map = [
             'saved' => ['type' => 'success', 'text' => 'Đã lưu form thành công.'],
             'deleted' => ['type' => 'success', 'text' => 'Đã xoá thành công.'],
+            'duplicated' => ['type' => 'success', 'text' => 'Đã nhân bản form. Sửa tên/nội dung nếu cần.'],
             'marked_read' => ['type' => 'success', 'text' => 'Đã đánh dấu đã đọc.'],
             'error_name' => ['type' => 'error', 'text' => 'Vui lòng nhập tên form.'],
+            'popup_saved' => ['type' => 'success', 'text' => 'Đã lưu cài đặt Popup chung.'],
         ];
         return $map[$msg] ?? null;
     }

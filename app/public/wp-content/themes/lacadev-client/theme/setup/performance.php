@@ -67,8 +67,13 @@ class ThemePerformance
             return $settings;
         });
 
-        // Remove login errors
-        add_filter('login_errors', '__return_null');
+        // Ẩn thông báo lỗi đăng nhập CHI TIẾT (tránh dò email/username hợp
+        // lệ) nhưng vẫn phải trả về 1 câu chung — __return_null() xoá trắng
+        // hoàn toàn, khiến form "shake" báo có lỗi mà không hiển thị gì,
+        // trông như bug thay vì cố ý ẩn thông tin.
+        add_filter('login_errors', function () {
+            return __('That key doesn\'t seem to work. Please check and try again.', 'laca');
+        });
     }
 
     /**
@@ -217,7 +222,12 @@ class ThemePerformance
     public static function register_service_worker()
     {
         if (!is_admin() && !is_user_logged_in()) {
-            $sw_path = get_template_directory() . '/dist/sw.js';
+            // get_template_directory() luôn trỏ vào theme PARENT (lacadev-client)
+            // — theme này KHÔNG có thư mục dist/. File dist/sw.js thật đã build
+            // đúng chỉ nằm ở theme CHILD (get_stylesheet_directory()) — dùng
+            // get_template_directory() khiến file_exists() luôn false, toàn bộ
+            // Service Worker (cache/offline/PWA) chết hoàn toàn trên mọi site.
+            $sw_path = get_stylesheet_directory() . '/dist/sw.js';
 
             // Only register if SW file exists
             if (!file_exists($sw_path)) {
@@ -233,7 +243,7 @@ class ThemePerformance
                     true
                 );
                 wp_localize_script('laca-sw-register', 'swConfig', [
-                    'swUrl' => get_template_directory_uri() . '/dist/sw.js',
+                    'swUrl' => get_stylesheet_directory_uri() . '/dist/sw.js',
                     'debug' => defined('WP_DEBUG') && WP_DEBUG ? 'true' : 'false',
                 ]);
             });
