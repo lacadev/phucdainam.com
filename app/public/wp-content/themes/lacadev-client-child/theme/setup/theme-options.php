@@ -104,6 +104,26 @@ $optionsPage = Container::make('theme_options', __('Laca Theme', 'laca'))
 		Field::make('text', 'ai_groq_key', __('Groq API Key', 'laca'))
 			->set_help_text('Model: Llama 3/3.1. Lấy tại: <a href="https://console.groq.com/keys" target="_blank">Groq Console</a>'),
 
+		Field::make('text', 'ai_openrouter_key', __('OpenRouter API Key', 'laca'))
+			->set_help_text('Nhiều model miễn phí (Gemini Flash, DeepSeek Free...). Lấy tại: <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai</a>'),
+
+		Field::make('text', 'ai_cloudflare_account_id', __('Cloudflare Account ID', 'laca'))
+			->set_width(50)
+			->set_help_text('Workers AI — miễn phí 10.000 neurons/ngày. Lấy trong Dashboard Cloudflare (cột phải trang Overview).'),
+
+		Field::make('text', 'ai_cloudflare_api_token', __('Cloudflare API Token', 'laca'))
+			->set_width(50)
+			->set_help_text('Token có quyền "Workers AI: Read". Tạo tại: <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">Cloudflare API Tokens</a>'),
+
+		Field::make('text', 'ai_mistral_key', __('Mistral API Key', 'laca'))
+			->set_help_text('Model: Mistral Nemo, Large. Lấy tại: <a href="https://console.mistral.ai/api-keys/" target="_blank">console.mistral.ai</a>'),
+
+		Field::make('text', 'ai_cohere_key', __('Cohere API Key', 'laca'))
+			->set_help_text('Model: Command R / R+. Lấy tại: <a href="https://dashboard.cohere.com/api-keys" target="_blank">dashboard.cohere.com</a>'),
+
+		Field::make('text', 'ai_nvidia_key', __('NVIDIA NIM API Key', 'laca'))
+			->set_help_text('Nhiều model open-source mạnh (Llama 3.1...), rate-limit + cần xác minh số điện thoại. Lấy tại: <a href="https://build.nvidia.com/" target="_blank">build.nvidia.com</a>'),
+
 		Field::make('text', 'ai_deepseek_key', __('DeepSeek API Key', 'laca'))
 			->set_help_text('Model: DeepSeek Chat. Lấy tại: <a href="https://platform.deepseek.com/" target="_blank">DeepSeek Platform</a>'),
 
@@ -113,10 +133,16 @@ $optionsPage = Container::make('theme_options', __('Laca Theme', 'laca'))
 		Field::make('text', 'ai_anthropic_key', __('Anthropic API Key', 'laca'))
 			->set_help_text('Model: Claude 3.5 Sonnet/Haiku. Lấy tại: <a href="https://console.anthropic.com/" target="_blank">Anthropic Console</a>'),
 
-		Field::make('select', 'ai_default_provider', __('Bô xử lý ưu tiên', 'laca'))
+		Field::make('select', 'ai_default_provider', __('Bộ xử lý ưu tiên', 'laca'))
+			->set_help_text('Nhà cung cấp được thử ĐẦU TIÊN. Nếu lỗi/hết quota, hệ thống tự động chuyển qua các nhà cung cấp khác (đã nhập key) theo thứ tự: Gemini → Groq → OpenRouter → Cloudflare Workers AI → Mistral → Cohere → NVIDIA NIM → DeepSeek → OpenAI → Anthropic.')
 			->set_options([
 				'gemini' => 'Google Gemini (Khuyên dùng)',
-				'groq'   => 'Groq (Llama 3 - Tốc độ cực nhanh)',
+				'groq' => 'Groq (Llama 3 - Tốc độ cực nhanh)',
+				'openrouter' => 'OpenRouter (Nhiều model free)',
+				'cloudflare' => 'Cloudflare Workers AI',
+				'mistral' => 'Mistral',
+				'cohere' => 'Cohere',
+				'nvidia' => 'NVIDIA NIM',
 				'deepseek' => 'DeepSeek (Giá rẻ/Chất lượng cao)',
 				'openai' => 'OpenAI GPT',
 				'anthropic' => 'Anthropic Claude',

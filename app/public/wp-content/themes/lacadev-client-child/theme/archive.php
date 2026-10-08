@@ -67,6 +67,8 @@ $ajax_config = wp_json_encode( [
 <div class="archive-post laca-news-list-archive" data-archive-config='<?php echo $ajax_config; ?>'>
 	<?php get_template_part( 'template-parts/page-hero' ); ?>
 
+	<?php laca_render_dynamic_cpt_archive_intro(); ?>
+
 	<div class="container-fluid">
 
 		<?php if ( have_posts() ) : ?>
@@ -82,7 +84,7 @@ $ajax_config = wp_json_encode( [
 
 					$cats     = get_the_terms( $post_id, 'category' );
 					$cat_name = '';
-					$cat_url  = '';
+					$cat_link = '';
 					if ( ! empty( $cats ) && ! is_wp_error( $cats ) ) {
 						$cat_name = esc_html( $cats[0]->name );
 						$cat_link = esc_url( get_term_link( $cats[0] ) );
