@@ -3,12 +3,14 @@ module.exports = {
   content: [
     // Gutenberg blocks — PHP render templates + JS/SCSS
     './block-gutenberg/**/*.{js,jsx,php,scss}',
-    // Theme templates (Twig / PHP)
+    // Theme templates (PHP / Twig)
     './app/**/*.php',
+    './theme/**/*.php',
     './resources/**/*.{js,jsx,php,twig,html}',
     // Nhận tự động từ Parent Theme
     '../lacadev-client/block-gutenberg/**/*.{js,jsx,php,scss}',
     '../lacadev-client/app/**/*.php',
+    '../lacadev-client/theme/**/*.php',
     '../lacadev-client/resources/**/*.{js,jsx,php,twig,html}'
   ],
   theme: {

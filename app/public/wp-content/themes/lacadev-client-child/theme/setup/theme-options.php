@@ -55,14 +55,15 @@ $optionsPage = Container::make('theme_options', __('Laca Theme', 'laca'))
 				->set_attribute('placeholder', 'Số điện thoại'),
 			])->set_header_template('<% if (name) { %><%- name %><% } %>'),
 
-		Field::make('complex', 'address_locations' . currentLanguage(), __('Địa điểm', 'laca'))->set_width(50)
+		Field::make('complex', 'address_locations' . currentLanguage(), __('Địa điểm / Chi nhánh', 'laca'))->set_width(50)
 			->set_layout('tabbed-vertical')
 			->add_fields([
-				Field::make('text', 'branch', __('', 'laca'))->set_width(50)
-				->set_attribute('placeholder', 'Branch | Chi nhánh'),
-				Field::make('textarea', 'address', __('', 'laca'))->set_width(50)
-				->set_attribute('placeholder', 'Address | Địa chỉ'),
-			])->set_header_template('<% if (branch) { %><%- branch %><% } %>'),
+				Field::make('text', 'branch', __('Chi nhánh / Loại', 'laca'))->set_width(40)
+					->set_attribute('placeholder', 'VD: Văn phòng, Nhà máy...'),
+				Field::make('textarea', 'address', __('Địa chỉ', 'laca'))->set_width(60)
+					->set_rows(3)
+					->set_attribute('placeholder', 'Nhập địa chỉ chi tiết...'),
+			])->set_header_template('<% if (branch) { %><%- branch %><% } else if (address) { %><%- address.substring(0, 30) %><% } else { %>Địa điểm mới<% } %>'),
 
 		Field::make('text', 'email' . currentLanguage(), __('', 'laca'))->set_width(33.33)
 			->set_attribute('placeholder', 'Email'),

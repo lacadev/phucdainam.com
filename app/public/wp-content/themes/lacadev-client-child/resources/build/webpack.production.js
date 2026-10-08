@@ -31,7 +31,10 @@ const babelLoader = {
         cacheDirectory: false,
         comments: false,
         presets: [
-            '@wordpress/babel-preset-default'
+            '@babel/preset-env',
+            // Cho phép cú pháp JSX trong các file ngoài webpack.blocks.js
+            // (vd resources/scripts/editor/ai-translate-block.js).
+            '@babel/preset-react',
         ],
     },
 };

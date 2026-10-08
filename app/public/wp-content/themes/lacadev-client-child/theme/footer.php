@@ -109,7 +109,6 @@ $footer_contact_image_alt = $footer_contact_image_id ? get_post_meta($footer_con
 <footer class="footer" role="contentinfo" data-aos="fade-up">
   <div class="footer__main">
     <div class="container">
-
       <div class="footer__grid">
         <!-- Menu về chúng tôi -->
         <?php
@@ -216,9 +215,13 @@ $footer_contact_image_alt = $footer_contact_image_id ? get_post_meta($footer_con
               foreach ($ft_addresses as $addr):
                 if (!empty($addr['address'])):
                   ?>
-                  <li class="footer__contact-item">
-                    <?php echo nl2br(esc_html($addr['address'])); ?>
-                    </span>
+                  <li class="footer__contact-item footer__contact-item--location">
+                    <?php if (!empty($addr['branch'])): ?>
+                      <span class="footer__contact-branch"><?php echo esc_html($addr['branch']); ?></span>
+                    <?php endif; ?>
+                    <?php if (!empty($addr['address'])): ?>
+                      <span class="footer__contact-address"><?php echo nl2br(esc_html($addr['address'])); ?></span>
+                    <?php endif; ?>
                   </li>
                 <?php endif; ?>
               <?php endforeach; ?>

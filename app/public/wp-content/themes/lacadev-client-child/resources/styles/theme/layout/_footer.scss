@@ -351,12 +351,32 @@
     margin-bottom: 1.5rem;
     display: flex;
     align-items: flex-start;
+    gap: 15px;
     font-size: 1.2rem;
     line-height: 1.6;
 
+    &--location {
+      align-items: baseline;
+    }
+
     @include maxWidth($sm) {
       font-size: 1.3rem; // Tăng để dễ đọc trên mobile
+      gap: 1rem;
     }
+  }
+
+  &__contact-branch {
+    font-weight: 600;
+    color: $secondColor;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: 100px;
+    display: inline-block;
+  }
+
+  &__contact-address {
+    flex: 1;
+    color: rgba(255, 255, 255, 0.9);
   }
 
   &__contact-icon {

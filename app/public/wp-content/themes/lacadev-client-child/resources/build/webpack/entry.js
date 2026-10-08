@@ -12,8 +12,13 @@ module.exports = {
   'theme': path.join(parentSrc, 'theme/index.js'),
   'admin': path.join(parentSrc, 'admin/index.js'),
   'login': path.join(parentSrc, 'login/index.js'),
-  'editor': path.join(parentSrc, 'editor/index.js'),
-  // Child theme: SCSS override + custom JS (archive-gallery, etc.)
+  // 'editor' vốn chỉ trỏ vào parent (Quicksand) — bundle thêm fonts.scss của
+  // child để trang soạn thảo Gutenberg cũng load được các font riêng của site.
+  'editor': [
+    path.join(parentSrc, 'editor/index.js'),
+    utils.srcStylesPath('theme/base/_fonts.scss'),
+  ],
+  // Child theme: SCSS override + custom JS (archive-gallery, footer form, AOS, etc.)
   // Dùng array entry để webpack bundle cả 2 vào dist/child.js + dist/styles/child.css
   'child': [
     utils.srcStylesPath('child.scss'),
