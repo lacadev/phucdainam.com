@@ -19,8 +19,10 @@ class ThemePerformance
         // Core WordPress optimizations
         add_action('init', [self::class, 'remove_wordpress_bloat']);
 
-        // Advanced caching
-        add_action('template_redirect', [self::class, 'set_cache_headers']);
+        // KHÔNG tự set Cache-Control cho HTML và KHÔNG ob_start('ob_gzhandler'):
+        // header/nén do web server (LiteSpeed) + plugin cache quản lý. Theme can
+        // thiệp vào 2 tầng này từng làm trình duyệt giữ trang lỗi 1h và đưa dữ
+        // liệu gzip nhị phân vào buffer của plugin cache.
 
         // Database optimizations
         add_action('init', [self::class, 'optimize_database_queries']);
@@ -33,9 +35,6 @@ class ThemePerformance
         // Image optimizations
         add_filter('wp_get_attachment_image_attributes', [self::class, 'optimize_images'], 10, 3);
         add_filter('the_content', [self::class, 'optimize_content_images']);
-
-        // Advanced compression
-        add_action('template_redirect', [self::class, 'enable_compression']);
 
         // Service Worker
         add_action('wp_footer', [self::class, 'register_service_worker']);
@@ -74,28 +73,6 @@ class ThemePerformance
         add_filter('login_errors', function () {
             return __('That key doesn\'t seem to work. Please check and try again.', 'laca');
         });
-    }
-
-    /**
-     * Set advanced cache headers
-     */
-    public static function set_cache_headers()
-    {
-        if (!is_admin() && !is_user_logged_in()) {
-            // Cache static assets for 1 year
-            if (preg_match('/\.(css|js|png|jpg|jpeg|gif|webp|svg|woff|woff2|ttf|eot|ico)$/', $_SERVER['REQUEST_URI'])) {
-                header('Cache-Control: public, max-age=31536000, immutable');
-                header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 31536000) . ' GMT');
-                header('Pragma: public');
-            }
-
-            // Cache HTML for 1 hour
-            else {
-                header('Cache-Control: public, max-age=3600, must-revalidate');
-                header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT');
-                header('Vary: Accept-Encoding');
-            }
-        }
     }
 
     /**
@@ -201,19 +178,6 @@ class ThemePerformance
         }, $content);
 
         return $content;
-    }
-
-    /**
-     * Enable compression
-     */
-    public static function enable_compression()
-    {
-        if (!is_admin()) {
-            // Enable gzip compression
-            if (function_exists('gzencode') && !ob_get_contents()) {
-                ob_start('ob_gzhandler');
-            }
-        }
     }
 
     /**
